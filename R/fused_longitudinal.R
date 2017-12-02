@@ -39,7 +39,7 @@
 #' code will default to a reasonable choice. Bad values of rho may lead to extraordinarily slow
 #' convergence of ADMM
 #' @param ... other arguments to be passed to cv.fusedlasso
-#' @return An object with S3 class "fusedLongitudinal"
+#' @return An object with S3 class "subgroupLong"
 #' @useDynLib personalizedLong
 #' @import Rcpp
 #' @import Matrix
@@ -76,13 +76,15 @@
 #' x.list <- rep(list(x), periods)
 #' y.list <- lapply(apply(y, 2, function(x) list(x) ), function(x) x[[1]])
 #'
-#' fit <- fusedLongitudinal(x = x.list, y = y.list, trt = trt, gamma = c(0.05, 0.1, 1, 2, 5, 10))
+#' fit <- subgroupLong(x = x.list, y = y.list, trt = trt, gamma = c(0.05, 0.1, 1, 2, 5, 10))
 #'
-#' round(matrix(fit$cv.models$best.cv.fit$beta, ncol = 6), 4)
+#' round(matrix(fit$cv.model$best.cv.fit$beta, ncol = 6), 4)
 #'
-#' bfit <- fusedLongitudinal(x = x.list, y = y.list,
+#' bfit <- subgroupLong(x = x.list, y = y.list,
 #'                           trt = trt, gamma = c(0.05, 0.1, 1),
 #'                           boot = TRUE, B = 50L)
+#'
+#' plot(bfit)
 #'
 #' lapply(bfit$boot.res, function(x) round(colMeans(x, na.rm = TRUE), 4) )
 #' ## bootstrap CI
@@ -151,10 +153,9 @@
 #'      oracle.results[[t]][11] <- sum(y.cur[sub.0x] * weights.cur[sub.0x]) /
 #'          sum(weights.cur[sub.0x])
 #' }
-#' mean(unlist(lapply(1:periods, function(i)
-#'     oracle.results[[i]] <= CIs[[i]][2,] & oracle.results[[i]] >= CIs[[i]][1,])))
 #'
-fusedLongitudinal <- function(x,
+#'
+subgroupLong <- function(x,
                               y,
                               trt,
                               family         = c("gaussian", "binomial", "coxph"),
@@ -796,6 +797,8 @@ fusedLongitudinal <- function(x,
 
     benefit.score.list <- trt.assignment.list <- vector(mode = "list", length = nperiods)
     trt.assignments <- numeric(total.nobs)
+    names(benefit.score.list) <- names(trt.assignment.list) <- paste0("Time", 1:nperiods)
+    names(beta.hat1.list) <- names(benefit.score.list)
     for (t in 1:nperiods)
     {
         idx.cur.row  <- (nrow.vec.cumsum[t] + 1):(nrow.vec.cumsum[t + 1])
@@ -833,7 +836,8 @@ fusedLongitudinal <- function(x,
                 trt.assignments     = trt.assignments,
                 benefit.score.list  = benefit.score.list,
                 trt.assignment.list = trt.assignment.list,
-                cv.models           = cv.model,
+                coefficients        = beta.hat1.list,
+                cv.model            = cv.model,
                 best.fit            = best.fit,
                 fit.stats           = train.res.list,
                 fit.stats.bias.adj  = train.bias.corrected.res.list,
@@ -841,10 +845,119 @@ fusedLongitudinal <- function(x,
                 boot.res.orig       = boot.res.orig.list,
                 family              = family,
                 lambda              = lambda,
+                gamma               = gamma,
+                lambda.min          = cv.model$best.cv.fit$lambda.min,
+                gamma.min           = cv.model$gamma.min,
+                which.lambda.min    = which.min(cv.model$best.cv.fit$cvm),
+                which.gamma.min     = which.min(cv.model$cvm),
                 x.dims              = x.dim.list,
                 varnames            = varnames.list)
-    class(ret) <- "fusedLongitudinal"
+    class(ret) <- "subgroupLong"
     ret
+}
+
+
+#' Plot method for subgroupLong fitted objects
+#'
+#' @param x fitted "subgroupLong" model object
+#' @param ... other graphical parameters for the plot
+#' @rdname plot
+#' @export
+plot.subgroupLong <- function(x, ...)
+{
+    if (!is.null(x$boot.res))
+    {
+
+        means <- lapply(x$boot.res, function(x) apply(x, 2, function(xx)
+            mean(xx, na.rm = TRUE)) )
+        CIs <- lapply(x$boot.res, function(x) apply(x, 2, function(xx)
+            quantile(xx, probs = c(0.025, 0.975), na.rm = TRUE)) )
+
+        periods <- length(CIs)
+
+        y.rng <- range(unlist(lapply(CIs, function(xx) range(xx[,4:7]))))
+
+        CI.array <- array(NA, dim = c(dim(CIs[[1]]), periods))
+        mean.mat <- array(NA, dim = c(length(means[[1]]), periods))
+
+        rownames(mean.mat) <- names(means[[1]])
+        colnames(mean.mat) <- paste0("Time", 1:periods)
+        dimnames(CI.array) <- c(dimnames(CIs[[1]]), list(paste0("Time", 1:periods)))
+
+
+        for (t in 1:periods)
+        {
+            CI.array[,,t] <- CIs[[t]]
+            mean.mat[,t]  <- means[[t]]
+        }
+
+        par(mfrow = c(1, 2))
+        plot(0, xlim = c(1, periods),
+             ylim = y.rng, cex = 0,
+             col = "white",
+             main = "Recommended Trt",
+             xlab = "Time", ...)
+        lines(x = 1:periods, y = mean.mat[4,], lwd = 2, col = "#0000FFD9")
+        lines(x = 1:periods, y = mean.mat[6,], lwd = 2, col = "#FF0000D9")
+
+        # add vertical lines for TRT = 1
+        segments(x0 = 1:periods, x1 = 1:periods,
+                 y0 = CI.array[1,4,], y1 = CI.array[2,4,], col = "#0000FFD9")
+
+        # add horizontal bars for TRT = 1
+        bar.width <- 0.15
+        segments(x0 = 1:periods - bar.width, x1 = 1:periods + bar.width,
+                 y0 = CI.array[1,4,], y1 = CI.array[1,4,], col = "#0000FFD9")
+        segments(x0 = 1:periods - bar.width, x1 = 1:periods + bar.width,
+                 y0 = CI.array[2,4,], y1 = CI.array[2,4,], col = "#0000FFD9")
+
+        # add vertical lines for TRT = 0
+        segments(x0 = 1:periods, x1 = 1:periods,
+                 y0 = CI.array[1,6,], y1 = CI.array[2,6,], col = "#FF0000D9")
+
+        # add horizontal bars for TRT = 0
+        bar.width <- 0.15
+        segments(x0 = 1:periods - bar.width, x1 = 1:periods + bar.width,
+                 y0 = CI.array[1,6,], y1 = CI.array[1,6,], col = "#FF0000D9")
+        segments(x0 = 1:periods - bar.width, x1 = 1:periods + bar.width,
+                 y0 = CI.array[2,6,], y1 = CI.array[2,6,], col = "#FF0000D9")
+
+        plot(0, xlim = c(1, periods),
+             ylim = y.rng, cex = 0,
+             col = "white",
+             main = "Recommended Ctrl",
+             xlab = "Time", ...)
+        lines(x = 1:periods, y = mean.mat[5,], lwd = 2, col = "#FF0000D9")
+        lines(x = 1:periods, y = mean.mat[7,], lwd = 2, col = "#0000FFD9")
+
+        legend("topright", legend = c("Received Trt", "Received Ctrl"),
+               col = c("#0000FFD9", "#FF0000D9"), lty = 1, lwd = 2)
+
+
+        # add vertical lines for TRT = 1
+        segments(x0 = 1:periods, x1 = 1:periods,
+                 y0 = CI.array[1,7,], y1 = CI.array[2,7,], col = "#0000FFD9")
+
+        # add horizontal bars for TRT = 1
+        bar.width <- 0.15
+        segments(x0 = 1:periods - bar.width, x1 = 1:periods + bar.width,
+                 y0 = CI.array[1,7,], y1 = CI.array[1,7,], col = "#0000FFD9")
+        segments(x0 = 1:periods - bar.width, x1 = 1:periods + bar.width,
+                 y0 = CI.array[2,7,], y1 = CI.array[2,7,], col = "#0000FFD9")
+
+        # add vertical lines for TRT = 0
+        segments(x0 = 1:periods, x1 = 1:periods,
+                 y0 = CI.array[1,5,], y1 = CI.array[2,5,], col = "#FF0000D9")
+
+        # add horizontal bars for TRT = 0
+        bar.width <- 0.15
+        segments(x0 = 1:periods - bar.width, x1 = 1:periods + bar.width,
+                 y0 = CI.array[1,5,], y1 = CI.array[1,5,], col = "#FF0000D9")
+        segments(x0 = 1:periods - bar.width, x1 = 1:periods + bar.width,
+                 y0 = CI.array[2,5,], y1 = CI.array[2,5,], col = "#FF0000D9")
+
+
+    }
 }
 
 # #' cross validation for interaction detection for longitudinal outcomes using fused lasso
@@ -856,9 +969,9 @@ fusedLongitudinal <- function(x,
 # #' "coxph" for time-to-event outcomes
 # #' @param lambda tuning parameter values for lasso penalty
 # #' @param gamma ratio of fused lasso to lasso tuning parameter
-# #' @return An object with S3 class "cv.fusedLongitudinal"
+# #' @return An object with S3 class "cv.subgroupLong"
 # #' @param nlambda number of tuning parameter values - default is 100.
-# #' @param ... other parameters to be passed to fusedLongitudinal
+# #' @param ... other parameters to be passed to subgroupLong
 # #' @import Rcpp
 # #' @import Matrix
 # #' @import foreach
@@ -875,9 +988,9 @@ fusedLongitudinal <- function(x,
 # #' trt <- rbinom(n.obs, 1, 0.5)
 # #' y <- rnorm(n.obs, sd = 3) + x %*% true.beta + trt * (x %*% true.beta.int)
 # #'
-# #' fit <- cv.fusedLongitudinal(x = x, y = y)
+# #' fit <- cv.subgroupLong(x = x, y = y)
 # #'
-# cv.fusedLongitudinal <- function(x,
+# cv.subgroupLong <- function(x,
 #                                  y,
 #                                  family   = c("gaussian", "binomial", "coxph"),
 #                                  lambda   = numeric(0),
@@ -886,13 +999,13 @@ fusedLongitudinal <- function(x,
 #                                  foldid   = NULL,
 #                                  ...)
 # {
-#     ## fusedLongitudinal.fit should actually
-#     ## be a fitted fusedLongitudinal object
+#     ## subgroupLong.fit should actually
+#     ## be a fitted subgroupLong object
 #     fitobj <- "test.object"
 #
 #     family <- match.arg(family)
-#     ret <- list(fusedLongitudinal.fit = fitobj, family = family, lambda = lambda)
-#     class(ret) <- "cv.fusedLongitudinal"
+#     ret <- list(subgroupLong.fit = fitobj, family = family, lambda = lambda)
+#     class(ret) <- "cv.subgroupLong"
 #     ret
 # }
 
@@ -1205,9 +1318,9 @@ cv.genlasso <- function(x,
 
 
 
-#' Prediction method for fusedLongitudinal fitted objects
+#' Prediction method for subgroupLong fitted objects
 #'
-#' @param object fitted "fusedLongitudinal" model object
+#' @param object fitted "subgroupLong" model object
 #' @param newx Matrix of new values for x at which predictions are to be made. Must be a matrix; can be sparse as in Matrix package.
 #' This argument is not used for type=c("coefficients","nonzero")
 #' @param s Value(s) of the penalty parameter lambda at which predictions are required. Default is the entire sequence used to create
@@ -1249,12 +1362,12 @@ cv.genlasso <- function(x,
 #' x.list <- rep(list(x), periods)
 #' y.list <- lapply(apply(y, 2, function(x) list(x) ), function(x) x[[1]])
 #'
-#' fit <- fusedLongitudinal(x = x.list, y = y.list, trt = trt, gamma = c(0.05, 0.1, 1, 2, 5, 10))
+#' fit <- subgroupLong(x = x.list, y = y.list, trt = trt, gamma = c(0.05, 0.1, 1, 2, 5, 10))
 #'
 #' preds <- predict(fit, newx = x)
 #'
 #'
-predict.fusedLongitudinal <- function(object, newx, s = NULL,
+predict.subgroupLong <- function(object, newx, s = NULL,
                                       type = c("link",
                                                "response",
                                                "coefficients",
@@ -1265,9 +1378,9 @@ predict.fusedLongitudinal <- function(object, newx, s = NULL,
 }
 
 
-# #' Prediction method for cv.fusedLongitudinal fitted objects
+# #' Prediction method for cv.subgroupLong fitted objects
 # #'
-# #' @param object fitted "cv.fusedLongitudinal" model object
+# #' @param object fitted "cv.subgroupLong" model object
 # #' @param newx Matrix of new values for x at which predictions are to be made. Must be a matrix; can be sparse as in Matrix package.
 # #' This argument is not used for type=c("coefficients","nonzero")
 # #' @param s Value(s) of the penalty parameter lambda at which predictions are required. Default is the entire sequence used to create
@@ -1277,7 +1390,7 @@ predict.fusedLongitudinal <- function(object, newx, s = NULL,
 # #' Type "class" applies only to "binomial" and produces the class label corresponding to the maximum probability.
 # #' @param ... not used
 # #' @return An object depending on the type argument
-# #' @method predict cv.fusedLongitudinal
+# #' @method predict cv.subgroupLong
 # #' @export
 # #' @examples
 # #' set.seed(123)
@@ -1291,12 +1404,12 @@ predict.fusedLongitudinal <- function(object, newx, s = NULL,
 # #' trt <- rbinom(n.obs, 1, 0.5)
 # #' y <- rnorm(n.obs, sd = 3) + x %*% true.beta + trt * (x %*% true.beta.int)
 # #'
-# #' fit <- cv.fusedLongitudinal(x = x, y = y)
+# #' fit <- cv.subgroupLong(x = x, y = y)
 # #'
 # #' preds <- predict(fit, newx = x)
 # #'
 # #'
-# predict.cv.fusedLongitudinal <- function(object, newx,
+# predict.cv.subgroupLong <- function(object, newx,
 #                                          s=c("lambda.1se","lambda.min"), ...)
 # {
 #     if(is.numeric(s))lambda=s
@@ -1307,18 +1420,18 @@ predict.fusedLongitudinal <- function(object, newx, s = NULL,
 #         }
 #
 #     else stop("Invalid form for s")
-#     predict(object$fusedLongitudinal.fit, newx, s=lambda, ...)
+#     predict(object$subgroupLong.fit, newx, s=lambda, ...)
 # }
 
 
 
-#' Summary method for fusedLongitudinal fitted objects
+#' Summary method for subgroupLong fitted objects
 #'
-#' @param object fitted "fusedLongitudinal" model object
+#' @param object fitted "subgroupLong" model object
 #' @param ... not used
 #' @return An object depending on the type argument
 #' @rdname summary
-#' @method summary fusedLongitudinal
+#' @method summary subgroupLong
 #' @export
 #' @examples
 #' set.seed(123)
@@ -1351,12 +1464,12 @@ predict.fusedLongitudinal <- function(object, newx, s = NULL,
 #' x.list <- rep(list(x), periods)
 #' y.list <- lapply(apply(y, 2, function(x) list(x) ), function(x) x[[1]])
 #'
-#' fit <- fusedLongitudinal(x = x.list, y = y.list, trt = trt, gamma = c(0.05, 0.1, 1, 2, 5, 10))
+#' fit <- subgroupLong(x = x.list, y = y.list, trt = trt, gamma = c(0.05, 0.1, 1, 2, 5, 10))
 #'
 #' summary(fit)
 #'
 #'
-summary.fusedLongitudinal <- function(object, ...)
+summary.subgroupLong <- function(object, ...)
 {
 
 }
