@@ -862,6 +862,8 @@ subgroupLong <- function(x,
 #' @param x fitted "subgroupLong" model object
 #' @param ... other graphical parameters for the plot
 #' @rdname plot
+#' @importFrom graphics legend lines par plot
+#' @importFrom stats quantile
 #' @export
 plot.subgroupLong <- function(x, ...)
 {
