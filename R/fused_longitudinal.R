@@ -1318,6 +1318,8 @@ predict.fusedLongitudinal <- function(object, newx, s = NULL,
 #' @param ... not used
 #' @return An object depending on the type argument
 #' @rdname summary
+#' @method summary fusedLongitudinal
+#' @export
 #' @examples
 #' set.seed(123)
 #' nobs       <- 100

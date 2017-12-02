@@ -4,7 +4,7 @@
 \alias{summary.fusedLongitudinal}
 \title{Summary method for fusedLongitudinal fitted objects}
 \usage{
-summary.fusedLongitudinal(object, ...)
+\method{summary}{fusedLongitudinal}(object, ...)
 }
 \arguments{
 \item{object}{fitted "fusedLongitudinal" model object}
