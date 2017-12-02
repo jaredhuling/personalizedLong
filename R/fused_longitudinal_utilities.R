@@ -129,6 +129,9 @@ createLongitudinalDVarnames <- function(varname.list)
 #'
 #'
 #' @export
+#' @importFrom graphics abline axis points segments
+#' @importFrom methods as
+#' @importFrom stats predict sd weighted.mean
 admm.genlasso <- function(x,
                           y,
                           D                = NULL,

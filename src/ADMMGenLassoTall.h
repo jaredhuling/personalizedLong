@@ -5,6 +5,7 @@
 #include "Linalg/BlasWrapper.h"
 #include "Spectra/SymEigsSolver.h"
 #include "ADMMMatOp.h"
+#include <random>
 #include "utils.h"
 
 
@@ -219,7 +220,7 @@ public:
             MatOpSymLower<Double> op(XX);
             //Spectra::SymEigsSolver< Double, Spectra::LARGEST_ALGE, MatOpSymLower<Double> > eigs(&op, 1, 3);
             Spectra::SymEigsSolver< Double, Spectra::BOTH_ENDS, MatOpSymLower<Double> > eigs(&op, 2, 5);
-            srand(0);
+            //srand(0);
             eigs.init();
             eigs.compute(1000, 0.01);
             Vector evals = eigs.eigenvalues();

@@ -50,7 +50,8 @@
 #'
 #' trt <- rbinom(nobs, 1, 0.5)
 #' x   <- matrix(rnorm(nobs * nvars), ncol = nvars); colnames(x) <- paste0("V", 1:ncol(x))
-#' y   <- x %*% (beta * 0.5) + (2 * trt - 1) * (x %*% beta) + matrix(rnorm(nobs * periods, sd = sd), ncol = periods)
+#' y   <- x %*% (beta * 0.5) + (2 * trt - 1) * (x %*% beta) +
+#'     matrix(rnorm(nobs * periods, sd = sd), ncol = periods)
 #' y   <- apply(y, 2, function(yy) yy - (2 * trt - 1))
 #'
 #' plot(x = NULL, xlim = c(1,6), ylim = range(y))
@@ -72,7 +73,8 @@
 #'
 #' lapply(bfit$boot.res, function(x) round(colMeans(x, na.rm = TRUE), 4) )
 #' ## bootstrap CI
-#' CIs <- lapply(bfit$boot.res, function(x) apply(x, 2, function(xx) quantile(xx, probs = c(0.025, 0.975), na.rm = TRUE)) )
+#' CIs <- lapply(bfit$boot.res, function(x) apply(x, 2, function(xx)
+#'      quantile(xx, probs = c(0.025, 0.975), na.rm = TRUE)) )
 #'
 #' D <- lapply(1:periods, function(i) 1 * (drop(x.list[[i]] %*%  beta[,i]) > 0) )
 #' res.vec <- numeric(11L)
@@ -136,7 +138,8 @@
 #'      oracle.results[[t]][11] <- sum(y.cur[sub.0x] * weights.cur[sub.0x]) /
 #'          sum(weights.cur[sub.0x])
 #' }
-#' mean(unlist(lapply(1:periods, function(i) oracle.results[[i]] <= CIs[[i]][2,] & oracle.results[[i]] >= CIs[[i]][1,])))
+#' mean(unlist(lapply(1:periods, function(i)
+#'     oracle.results[[i]] <= CIs[[i]][2,] & oracle.results[[i]] >= CIs[[i]][1,])))
 #'
 fusedLongitudinal <- function(x,
                               y,
