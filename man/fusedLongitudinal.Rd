@@ -41,12 +41,33 @@ variables being penalized with the lasso.}
 
 \item{nfolds}{number of folds for cross validation. If given value 0, 1, or NULL, no cross validation will be performed}
 
+\item{foldid}{an optional vector of values between 1 and \code{nfolds} specifying which fold each observation belongs to.}
+
 \item{boot}{logical, whether or not to perform bootstrap for benefit confidence intervals. default is FALSE
 for no bootstrap computation}
 
 \item{B}{integer number of resamples for bootstrap - default is 100}
 
+\item{boot.type}{one of \code{"replacement"}, \code{"mofn"}, specifies what type of bootstrap to use: with replacement (standard)
+or m-out-of-n bootstrap, in which case the number of samples are taken to be the integer part of
+n^\code{m.frac}, where the user specifies \code{m.frac} as some number strictly between 0 and 1. Samples
+are taken without replacemet for the m-out-of-n bootstrap}
+
+\item{m.frac}{scalar number strictly between 0 and 1,}
+
 \item{parallel}{boolean indicator of whether or not to utilize parallel computation for cross validation}
+
+\item{abs.tol}{absolute tolerance for convergence for ADMM. Defaults to 1e-5}
+
+\item{rel.tol}{relative tolerance for convergence for ADMM. Defaults to 1e-5}
+
+\item{maxit}{maximum number of ADMM iterations}
+
+\item{maxit.cv}{maximum number of ADMM iterations for cross validation runs}
+
+\item{rho}{scalar positive number value. This is the ADMM hyperparameter. If unspecified,
+code will default to a reasonable choice. Bad values of rho may lead to extraordinarily slow
+convergence of ADMM}
 
 \item{...}{other arguments to be passed to cv.fusedlasso}
 }

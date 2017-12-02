@@ -29,6 +29,15 @@ It is recommended to set this parameter to be \code{NULL}
 when the program calculates its own \eqn{\lambda}
 (by setting \code{lambda = NULL}).}
 
+\item{lambda.min.ratio}{Smallest value in the \eqn{\lambda} sequence
+as a fraction of \eqn{\lambda_0}. See
+the explanation of the \code{lambda}
+argument. This parameter is only used when
+the program calculates its own \eqn{\lambda}
+(by setting \code{lambda = NULL}). The default
+value is the same as \pkg{glmnet}: 0.0001 if
+\code{nrow(x) >= ncol(x)} and 0.01 otherwise.}
+
 \item{intercept}{Whether to fit an intercept in the model. Default is \code{FALSE}.}
 
 \item{standardize}{Whether to standardize the design matrix before
@@ -43,15 +52,6 @@ are always returned on the original scale.}
 
 \item{rho}{ADMM step size parameter. If set to \code{NULL}, the program
 will compute a default one which has good convergence properties.}
-
-\item{lambda_min_ratio}{Smallest value in the \eqn{\lambda} sequence
-as a fraction of \eqn{\lambda_0}. See
-the explanation of the \code{lambda}
-argument. This parameter is only used when
-the program calculates its own \eqn{\lambda}
-(by setting \code{lambda = NULL}). The default
-value is the same as \pkg{glmnet}: 0.0001 if
-\code{nrow(x) >= ncol(x)} and 0.01 otherwise.}
 }
 \description{
 Estimation of a linear model with the lasso penalty. The function

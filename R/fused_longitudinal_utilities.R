@@ -96,7 +96,7 @@ createLongitudinalDVarnames <- function(varname.list)
 #' @param nlambda Number of values in the \eqn{\lambda} sequence. Only used
 #'                       when the program calculates its own \eqn{\lambda}
 #'                       (by setting \code{lambda = NULL}).
-#' @param lambda_min_ratio Smallest value in the \eqn{\lambda} sequence
+#' @param lambda.min.ratio Smallest value in the \eqn{\lambda} sequence
 #'                                as a fraction of \eqn{\lambda_0}. See
 #'                                the explanation of the \code{lambda}
 #'                                argument. This parameter is only used when

@@ -21,10 +21,23 @@
 #' in the jth position indicates that the jth variable will be penalized with the lasso and 0 otherwise. Defaults to all
 #' variables being penalized with the lasso.
 #' @param nfolds number of folds for cross validation. If given value 0, 1, or NULL, no cross validation will be performed
+#' @param foldid an optional vector of values between 1 and \code{nfolds} specifying which fold each observation belongs to.
 #' @param boot logical, whether or not to perform bootstrap for benefit confidence intervals. default is FALSE
 #' for no bootstrap computation
 #' @param B integer number of resamples for bootstrap - default is 100
+#' @param boot.type one of \code{"replacement"}, \code{"mofn"}, specifies what type of bootstrap to use: with replacement (standard)
+#' or m-out-of-n bootstrap, in which case the number of samples are taken to be the integer part of
+#' n^\code{m.frac}, where the user specifies \code{m.frac} as some number strictly between 0 and 1. Samples
+#' are taken without replacemet for the m-out-of-n bootstrap
+#' @param m.frac scalar number strictly between 0 and 1,
 #' @param parallel boolean indicator of whether or not to utilize parallel computation for cross validation
+#' @param abs.tol absolute tolerance for convergence for ADMM. Defaults to 1e-5
+#' @param rel.tol relative tolerance for convergence for ADMM. Defaults to 1e-5
+#' @param maxit maximum number of ADMM iterations
+#' @param maxit.cv maximum number of ADMM iterations for cross validation runs
+#' @param rho scalar positive number value. This is the ADMM hyperparameter. If unspecified,
+#' code will default to a reasonable choice. Bad values of rho may lead to extraordinarily slow
+#' convergence of ADMM
 #' @param ... other arguments to be passed to cv.fusedlasso
 #' @return An object with S3 class "fusedLongitudinal"
 #' @useDynLib personalizedLong
@@ -175,6 +188,10 @@ fusedLongitudinal <- function(x,
     {
         stop(paste(family, "family not implemented yet."))
     }
+
+    m.frac <- as.double(m.frac[1])
+
+    if (m.frac >= 1 || m.frac <= 0) stop("m.frac must be between 0 and 1")
 
     #dim.y <- dim(y)
     #if (is.null(dim.y))
@@ -830,54 +847,54 @@ fusedLongitudinal <- function(x,
     ret
 }
 
-#' cross validation for interaction detection for longitudinal outcomes using fused lasso
-#'
-#' @param x input matrix.
-#' Each row is an observation, each column corresponds to a covariate
-#' @param y numeric response vector of length nobs.
-#' @param family "gaussian" for least squares problems, "binomial" for binary response.
-#' "coxph" for time-to-event outcomes
-#' @param lambda tuning parameter values for lasso penalty
-#' @param gamma ratio of fused lasso to lasso tuning parameter
-#' @return An object with S3 class "cv.fusedLongitudinal"
-#' @param nlambda number of tuning parameter values - default is 100.
-#' @param ... other parameters to be passed to fusedLongitudinal
-#' @import Rcpp
-#' @import Matrix
-#' @import foreach
-#' @export
-#' @examples
-#' set.seed(123)
-#' n.obs <- 100
-#' n.vars <- 10
-#'
-#' true.beta <- c(runif(3, -0.25, 0.25), rep(0, n.vars - 3))
-#' true.beta.int <- c(rep(0, n.vars - 3), runif(3, -0.5, 0.5))
-#'
-#' x <- matrix(rnorm(n.obs * n.vars), n.obs, n.vars)
-#' trt <- rbinom(n.obs, 1, 0.5)
-#' y <- rnorm(n.obs, sd = 3) + x %*% true.beta + trt * (x %*% true.beta.int)
-#'
-#' fit <- cv.fusedLongitudinal(x = x, y = y)
-#'
-cv.fusedLongitudinal <- function(x,
-                                 y,
-                                 family   = c("gaussian", "binomial", "coxph"),
-                                 lambda   = numeric(0),
-                                 nlambda  = 100L,
-                                 nfolds   = 10L,
-                                 foldid   = NULL,
-                                 ...)
-{
-    ## fusedLongitudinal.fit should actually
-    ## be a fitted fusedLongitudinal object
-    fitobj <- "test.object"
-
-    family <- match.arg(family)
-    ret <- list(fusedLongitudinal.fit = fitobj, family = family, lambda = lambda)
-    class(ret) <- "cv.fusedLongitudinal"
-    ret
-}
+# #' cross validation for interaction detection for longitudinal outcomes using fused lasso
+# #'
+# #' @param x input matrix.
+# #' Each row is an observation, each column corresponds to a covariate
+# #' @param y numeric response vector of length nobs.
+# #' @param family "gaussian" for least squares problems, "binomial" for binary response.
+# #' "coxph" for time-to-event outcomes
+# #' @param lambda tuning parameter values for lasso penalty
+# #' @param gamma ratio of fused lasso to lasso tuning parameter
+# #' @return An object with S3 class "cv.fusedLongitudinal"
+# #' @param nlambda number of tuning parameter values - default is 100.
+# #' @param ... other parameters to be passed to fusedLongitudinal
+# #' @import Rcpp
+# #' @import Matrix
+# #' @import foreach
+# #' @export
+# #' @examples
+# #' set.seed(123)
+# #' n.obs <- 100
+# #' n.vars <- 10
+# #'
+# #' true.beta <- c(runif(3, -0.25, 0.25), rep(0, n.vars - 3))
+# #' true.beta.int <- c(rep(0, n.vars - 3), runif(3, -0.5, 0.5))
+# #'
+# #' x <- matrix(rnorm(n.obs * n.vars), n.obs, n.vars)
+# #' trt <- rbinom(n.obs, 1, 0.5)
+# #' y <- rnorm(n.obs, sd = 3) + x %*% true.beta + trt * (x %*% true.beta.int)
+# #'
+# #' fit <- cv.fusedLongitudinal(x = x, y = y)
+# #'
+# cv.fusedLongitudinal <- function(x,
+#                                  y,
+#                                  family   = c("gaussian", "binomial", "coxph"),
+#                                  lambda   = numeric(0),
+#                                  nlambda  = 100L,
+#                                  nfolds   = 10L,
+#                                  foldid   = NULL,
+#                                  ...)
+# {
+#     ## fusedLongitudinal.fit should actually
+#     ## be a fitted fusedLongitudinal object
+#     fitobj <- "test.object"
+#
+#     family <- match.arg(family)
+#     ret <- list(fusedLongitudinal.fit = fitobj, family = family, lambda = lambda)
+#     class(ret) <- "cv.fusedLongitudinal"
+#     ret
+# }
 
 
 cv.fusedlasso <- function(x,
@@ -1203,17 +1220,36 @@ cv.genlasso <- function(x,
 #' @export
 #' @examples
 #' set.seed(123)
-#' n.obs <- 100
-#' n.vars <- 10
+#' nobs       <- 100
+#' nobs.test  <- 1e5
+#' nvars      <- 20
+#' periods    <- 6
+#' sd         <- 2
 #'
-#' true.beta <- c(runif(3, -0.25, 0.25), rep(0, n.vars - 3))
-#' true.beta.int <- c(rep(0, n.vars - 3), runif(3, -0.5, 0.5))
+#' beta.nz <- rbind(c( 1,    1,    1,    1.5,  1.5,  1.5),
+#'                  c(-1,   -1,   -1,   -0.5, -0.5, -0.5),
+#'                  c( 1,    1,    1,   -1,   -1,   -1),
+#'                  c( 1,    1,    1,    1,    1,    1),
+#'                  c(-0.5, -0.5, -0.5, -0.5, -0.5, -0.5))
 #'
-#' x <- matrix(rnorm(n.obs * n.vars), n.obs, n.vars)
-#' trt <- rbinom(n.obs, 1, 0.5)
-#' y <- rnorm(n.obs, sd = 3) + x %*% true.beta + trt * (x %*% true.beta.int)
+#' beta <- data.matrix(rbind(beta.nz, matrix(0, nvars - 5, periods)))
 #'
-#' fit <- fusedLongitudinal(x = x, y = y)
+#' trt <- rbinom(nobs, 1, 0.5)
+#' x   <- matrix(rnorm(nobs * nvars), ncol = nvars); colnames(x) <- paste0("V", 1:ncol(x))
+#' y   <- x %*% (beta * 0.5) + (2 * trt - 1) * (x %*% beta) +
+#'     matrix(rnorm(nobs * periods, sd = sd), ncol = periods)
+#' y   <- apply(y, 2, function(yy) yy - (2 * trt - 1))
+#'
+#' plot(x = NULL, xlim = c(1,6), ylim = range(y))
+#' for (i in 1:nobs)
+#' {
+#'     lines(x = 1:6, y = y[i,], col = colors()[i+1])
+#' }
+#'
+#' x.list <- rep(list(x), periods)
+#' y.list <- lapply(apply(y, 2, function(x) list(x) ), function(x) x[[1]])
+#'
+#' fit <- fusedLongitudinal(x = x.list, y = y.list, trt = trt, gamma = c(0.05, 0.1, 1, 2, 5, 10))
 #'
 #' preds <- predict(fit, newx = x)
 #'
@@ -1229,50 +1265,50 @@ predict.fusedLongitudinal <- function(object, newx, s = NULL,
 }
 
 
-#' Prediction method for cv.fusedLongitudinal fitted objects
-#'
-#' @param object fitted "cv.fusedLongitudinal" model object
-#' @param newx Matrix of new values for x at which predictions are to be made. Must be a matrix; can be sparse as in Matrix package.
-#' This argument is not used for type=c("coefficients","nonzero")
-#' @param s Value(s) of the penalty parameter lambda at which predictions are required. Default is the entire sequence used to create
-#' the model.
-#' @param type Type of prediction required. Type == "link" gives the linear predictors for the "binomial" model; for "gaussian" models it gives the fitted values.
-#' Type == "response" gives the fitted probabilities for "binomial". Type "coefficients" computes the coefficients at the requested values for s.
-#' Type "class" applies only to "binomial" and produces the class label corresponding to the maximum probability.
-#' @param ... not used
-#' @return An object depending on the type argument
-#' @method predict cv.fusedLongitudinal
-#' @export
-#' @examples
-#' set.seed(123)
-#' n.obs <- 100
-#' n.vars <- 10
-#'
-#' true.beta <- c(runif(3, -0.25, 0.25), rep(0, n.vars - 3))
-#' true.beta.int <- c(rep(0, n.vars - 3), runif(3, -0.5, 0.5))
-#'
-#' x <- matrix(rnorm(n.obs * n.vars), n.obs, n.vars)
-#' trt <- rbinom(n.obs, 1, 0.5)
-#' y <- rnorm(n.obs, sd = 3) + x %*% true.beta + trt * (x %*% true.beta.int)
-#'
-#' fit <- cv.fusedLongitudinal(x = x, y = y)
-#'
-#' preds <- predict(fit, newx = x)
-#'
-#'
-predict.cv.fusedLongitudinal <- function(object, newx,
-                                         s=c("lambda.1se","lambda.min"), ...)
-{
-    if(is.numeric(s))lambda=s
-    else
-        if(is.character(s)){
-            s=match.arg(s)
-            lambda=object[[s]]
-        }
-
-    else stop("Invalid form for s")
-    predict(object$fusedLongitudinal.fit, newx, s=lambda, ...)
-}
+# #' Prediction method for cv.fusedLongitudinal fitted objects
+# #'
+# #' @param object fitted "cv.fusedLongitudinal" model object
+# #' @param newx Matrix of new values for x at which predictions are to be made. Must be a matrix; can be sparse as in Matrix package.
+# #' This argument is not used for type=c("coefficients","nonzero")
+# #' @param s Value(s) of the penalty parameter lambda at which predictions are required. Default is the entire sequence used to create
+# #' the model.
+# #' @param type Type of prediction required. Type == "link" gives the linear predictors for the "binomial" model; for "gaussian" models it gives the fitted values.
+# #' Type == "response" gives the fitted probabilities for "binomial". Type "coefficients" computes the coefficients at the requested values for s.
+# #' Type "class" applies only to "binomial" and produces the class label corresponding to the maximum probability.
+# #' @param ... not used
+# #' @return An object depending on the type argument
+# #' @method predict cv.fusedLongitudinal
+# #' @export
+# #' @examples
+# #' set.seed(123)
+# #' n.obs <- 100
+# #' n.vars <- 10
+# #'
+# #' true.beta <- c(runif(3, -0.25, 0.25), rep(0, n.vars - 3))
+# #' true.beta.int <- c(rep(0, n.vars - 3), runif(3, -0.5, 0.5))
+# #'
+# #' x <- matrix(rnorm(n.obs * n.vars), n.obs, n.vars)
+# #' trt <- rbinom(n.obs, 1, 0.5)
+# #' y <- rnorm(n.obs, sd = 3) + x %*% true.beta + trt * (x %*% true.beta.int)
+# #'
+# #' fit <- cv.fusedLongitudinal(x = x, y = y)
+# #'
+# #' preds <- predict(fit, newx = x)
+# #'
+# #'
+# predict.cv.fusedLongitudinal <- function(object, newx,
+#                                          s=c("lambda.1se","lambda.min"), ...)
+# {
+#     if(is.numeric(s))lambda=s
+#     else
+#         if(is.character(s)){
+#             s=match.arg(s)
+#             lambda=object[[s]]
+#         }
+#
+#     else stop("Invalid form for s")
+#     predict(object$fusedLongitudinal.fit, newx, s=lambda, ...)
+# }
 
 
 
@@ -1281,20 +1317,39 @@ predict.cv.fusedLongitudinal <- function(object, newx,
 #' @param object fitted "fusedLongitudinal" model object
 #' @param ... not used
 #' @return An object depending on the type argument
-#' @export
+#' @rdname summary
 #' @examples
 #' set.seed(123)
-#' n.obs <- 100
-#' n.vars <- 10
+#' nobs       <- 100
+#' nobs.test  <- 1e5
+#' nvars      <- 20
+#' periods    <- 6
+#' sd         <- 2
 #'
-#' true.beta <- c(runif(3, -0.25, 0.25), rep(0, n.vars - 3))
-#' true.beta.int <- c(rep(0, n.vars - 3), runif(3, -0.5, 0.5))
+#' beta.nz <- rbind(c( 1,    1,    1,    1.5,  1.5,  1.5),
+#'                  c(-1,   -1,   -1,   -0.5, -0.5, -0.5),
+#'                  c( 1,    1,    1,   -1,   -1,   -1),
+#'                  c( 1,    1,    1,    1,    1,    1),
+#'                  c(-0.5, -0.5, -0.5, -0.5, -0.5, -0.5))
 #'
-#' x <- matrix(rnorm(n.obs * n.vars), n.obs, n.vars)
-#' trt <- rbinom(n.obs, 1, 0.5)
-#' y <- rnorm(n.obs, sd = 3) + x %*% true.beta + trt * (x %*% true.beta.int)
+#' beta <- data.matrix(rbind(beta.nz, matrix(0, nvars - 5, periods)))
 #'
-#' fit <- fusedLongitudinal(x = x, y = y)
+#' trt <- rbinom(nobs, 1, 0.5)
+#' x   <- matrix(rnorm(nobs * nvars), ncol = nvars); colnames(x) <- paste0("V", 1:ncol(x))
+#' y   <- x %*% (beta * 0.5) + (2 * trt - 1) * (x %*% beta) +
+#'     matrix(rnorm(nobs * periods, sd = sd), ncol = periods)
+#' y   <- apply(y, 2, function(yy) yy - (2 * trt - 1))
+#'
+#' plot(x = NULL, xlim = c(1,6), ylim = range(y))
+#' for (i in 1:nobs)
+#' {
+#'     lines(x = 1:6, y = y[i,], col = colors()[i+1])
+#' }
+#'
+#' x.list <- rep(list(x), periods)
+#' y.list <- lapply(apply(y, 2, function(x) list(x) ), function(x) x[[1]])
+#'
+#' fit <- fusedLongitudinal(x = x.list, y = y.list, trt = trt, gamma = c(0.05, 0.1, 1, 2, 5, 10))
 #'
 #' summary(fit)
 #'
