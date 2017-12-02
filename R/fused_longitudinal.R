@@ -11,8 +11,8 @@
 #' @param trt list of length equal to the number of time periods. each element of trt is a vector of treatment indicators
 #' @param family "gaussian" for least squares problems, "binomial" for binary response.
 #' "coxph" for time-to-event outcomes
-#' @param weights
-#' @param type.measure  c("mse","deviance","class","auc","mae"),
+#' @param weights observation weights
+#' @param type.measure  one of c("mse","deviance","class","auc","mae") to be used for cross validation
 #' @param lambda tuning parameter values for lasso penalty
 #' @param gamma ratio of fused lasso to lasso tuning parameter
 #' @param nlambda number of tuning parameter values - default is 100.

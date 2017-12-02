@@ -24,7 +24,9 @@ Each row is an observation, each column corresponds to a covariate}
 \item{family}{"gaussian" for least squares problems, "binomial" for binary response.
 "coxph" for time-to-event outcomes}
 
-\item{type.measure}{c("mse","deviance","class","auc","mae"),}
+\item{weights}{observation weights}
+
+\item{type.measure}{one of c("mse","deviance","class","auc","mae") to be used for cross validation}
 
 \item{lambda}{tuning parameter values for lasso penalty}
 
