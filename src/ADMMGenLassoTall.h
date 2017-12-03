@@ -273,6 +273,8 @@ public:
         {
             float lam_fact = lambda;
             //rho = std::pow(evals[0], 1.0 / 3) * std::pow(lambda, 2.0 / 3);
+
+            /*
             if (lam_fact < savedEigs[1])
             {
                 rho = std::sqrt(savedEigs[1] * std::pow(lam_fact * 4, 1.35));
@@ -283,6 +285,8 @@ public:
             {
                 rho = std::pow(lam_fact, 1.05);
             }
+             */
+            rho = std::pow(savedEigs[0], 0.333333) * std::pow(lam_fact, 0.666666);
 
         }
 

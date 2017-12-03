@@ -208,10 +208,11 @@ admm.genlasso <- function(x,
     {
         stop("abs.tol and rel.tol should be nonnegative")
     }
-    if(isTRUE(rho <= 0))
-    {
-        stop("rho should be positive")
-    }
+
+    #if(isTRUE(rho <= 0))
+    #{
+    #    stop("rho should be positive")
+    #}
 
     maxit   <- as.integer(maxit)
     abs.tol <- as.numeric(abs.tol)
