@@ -1,37 +1,24 @@
----
-output:
-  html_document:
-    keep_md: yes
-    self_contained: true
----
 
-
-
-
-
-
-# Installing the 'personalizedLong' package
-
+Installing the 'personalizedLong' package
+=========================================
 
 Install the development version using the **devtools** package:
 
-```r
+``` r
 devtools::install_github("jaredhuling/personalizedLong")
 ```
 
-# Quick Usage Overview
-
+Quick Usage Overview
+====================
 
 Load the package:
 
-```r
+``` r
 library(personalizedLong)
 ```
 
 Access help file for main function:
 
-```r
+``` r
 ?subgroupLong
 ```
-
-
