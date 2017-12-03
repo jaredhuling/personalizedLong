@@ -2,7 +2,10 @@ Package: personalizedLong
 Type: Package
 Title: Fused comparative intervention/treatment scoring
 Version: 0.0.1
-Authors@R: person("First", "Last", email = "first.last@example.com", role = c("aut", "cre"))
+Authors@R: c(
+    person("Jared", "Huling", , "jaredhuling@gmail.com", c("aut", "cre")),
+    person("Yixuan", "Qiu", , , c("cph"))
+    )
 Description: The 'personalizedLong' package provides routines for fitting subgroup identification models for longitudinal data via fused comparative intervention/treatment scoring.
 License: GPL-2
 LazyData: TRUE

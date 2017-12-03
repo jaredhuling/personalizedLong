@@ -1107,12 +1107,7 @@ cv.fusedlasso <- function(x,
                                                ...)
             }
         } else {
-            outlist = foreach (g=seq(ngamma), .packages=c("personalized"),
-                               .export = c("cv.genlasso", "cv_genlasso", "cvcompute",
-                                           "predict.cv.genlasso", "predict.cv.gamma.genlasso",
-                                           "plot.cv.genlasso", "plot.cv.gamma.genlasso",
-                                           "error.bars")) %dopar% {
-
+            outlist = foreach (g=seq(ngamma), .packages = c("personalizedLong") ) %dopar% {
                                                gamma.cur <- gamma[g]
 
                                                if (!is.null(lasso.penalize)) {
