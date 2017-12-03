@@ -1252,8 +1252,8 @@ cv.genlasso <- function(x,
     outlist <- as.list(seq(nfolds))
     ###Now fit the nfold models and store them
     ###First try and do it using foreach if parallel is TRUE
-    if (parallel && require(foreach)) {
-        outlist = foreach (i=seq(nfolds), .packages=c("genlasso")) %dopar% {
+    if (parallel) {
+        outlist = foreach (i=seq(nfolds), .packages=c("personalizedLong")) %dopar% {
             which = foldid==i
             if(is.matrix(y))y_sub=y[!which,]else y_sub=y[!which]
 
