@@ -1210,7 +1210,15 @@ cv.genlasso <- function(x,
     if (is.null(rho))
     {
         eigs <- eigen(crossprod(x * sqrt(weights)))$values
-        rho <- sqrt(eigs[1] * (eigs[length(eigs)] + 1e-4) )
+
+        mineig <- eigs[eigs > 1e-6][sum(eigs > 1e-6)]
+
+        if (length(mineig) == 0)
+        {
+            mineig <- 1e-6
+        }
+
+        rho <- sqrt(eigs[1] * (mineig + 1e-4) )
     }
     genlasso.object <- admm.genlasso(x       = x * sqrt(weights),
                                      y       = y * sqrt(weights),
