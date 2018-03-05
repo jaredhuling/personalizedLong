@@ -1242,7 +1242,10 @@ cv.genlasso <- function(x,
         if (length(zero.idx))
         {
             beta.zero.idx <- apply(D[zero.idx,,drop = FALSE], 1, function(xx) which(xx != 0))
-            genlasso.object$beta[beta.zero.idx,ii] <- 0
+            if (length(beta.zero.idx))
+            {
+                genlasso.object$beta[beta.zero.idx, ii] <- 0
+            }
         }
     }
 
