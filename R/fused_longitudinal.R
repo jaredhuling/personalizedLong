@@ -860,12 +860,14 @@ subgroupLong <- function(x,
 #' Plot method for subgroupLong fitted objects
 #'
 #' @param x fitted "subgroupLong" model object
+#' @param legend a keyword specifying the legend location. See details for legend. If \code{legend = 'none'},
+#' no legend will be made
 #' @param ... other graphical parameters for the plot
 #' @rdname plot
 #' @importFrom graphics legend lines par plot
 #' @importFrom stats quantile
 #' @export
-plot.subgroupLong <- function(x, ...)
+plot.subgroupLong <- function(x, legend = NULL, ...)
 {
     if (!is.null(x$boot.res))
     {
@@ -932,8 +934,20 @@ plot.subgroupLong <- function(x, ...)
         lines(x = 1:periods, y = mean.mat[5,], lwd = 2, col = "#FF0000D9")
         lines(x = 1:periods, y = mean.mat[7,], lwd = 2, col = "#0000FFD9")
 
-        legend("topright", legend = c("Received Trt", "Received Ctrl"),
-               col = c("#0000FFD9", "#FF0000D9"), lty = 1, lwd = 2)
+        if (!is.null(legend))
+        {
+            if (legend != "none")
+            {
+                legend(legend, legend = c("Received Trt", "Received Ctrl"),
+                       col = c("#0000FFD9", "#FF0000D9"), lty = 1, lwd = 2)
+            }
+        } else
+        {
+            legend("topright", legend = c("Received Trt", "Received Ctrl"),
+                   col = c("#0000FFD9", "#FF0000D9"), lty = 1, lwd = 2)
+        }
+
+
 
 
         # add vertical lines for TRT = 1

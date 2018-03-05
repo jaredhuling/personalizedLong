@@ -4,10 +4,13 @@
 \alias{plot.subgroupLong}
 \title{Plot method for subgroupLong fitted objects}
 \usage{
-\method{plot}{subgroupLong}(x, ...)
+\method{plot}{subgroupLong}(x, legend = NULL, ...)
 }
 \arguments{
 \item{x}{fitted "subgroupLong" model object}
+
+\item{legend}{a keyword specifying the legend location. See details for legend. If \code{legend = 'none'},
+no legend will be made}
 
 \item{...}{other graphical parameters for the plot}
 }
