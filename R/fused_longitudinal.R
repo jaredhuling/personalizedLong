@@ -1251,6 +1251,9 @@ cv.genlasso <- function(x,
 
         rho <- sqrt(eigs[1] * (mineig + 1e-4) )
     }
+
+    weights[weights <= 0] <- 1e-5
+
     genlasso.object <- admm.genlasso(x       = x * sqrt(weights),
                                      y       = y * sqrt(weights),
                                      D       = D,
@@ -1298,7 +1301,8 @@ cv.genlasso <- function(x,
     genlasso.object$call <- genlasso.call
     lambda               <- genlasso.object$lambda
     nlams                <- length(lambda)
-    if (nlams > 1) {
+    if (nlams > 2)
+    {
         lambda <- lambda[1:(floor(0.975 * nlams))]
     }
     min.lam <- min(lambda)
@@ -1309,7 +1313,8 @@ cv.genlasso <- function(x,
     outlist <- as.list(seq(nfolds))
     ###Now fit the nfold models and store them
     ###First try and do it using foreach if parallel is TRUE
-    if (parallel) {
+    if (parallel)
+    {
         outlist = foreach (i=seq(nfolds), .packages=c("personalizedLong")) %dopar% {
             which = foldid==i
             if(is.matrix(y))y_sub=y[!which,]else y_sub=y[!which]
@@ -1323,8 +1328,10 @@ cv.genlasso <- function(x,
                           rel.tol = rel.tol)
 
         }
-    }else{
-        for(i in seq(nfolds)){
+    } else
+    {
+        for(i in seq(nfolds))
+        {
             which = foldid==i
             if(is.matrix(y))y_sub=y[!which,]else y_sub=y[!which]
 

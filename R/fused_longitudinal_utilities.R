@@ -154,10 +154,12 @@ admm.genlasso <- function(x,
         ifelse(n < p, 0.01, 0.0001)
     }
 
-    if (is.null(D)) {
+    if (is.null(D))
+    {
         warning("D is missing, defaulting to regular lasso")
         D <- as(diag(p), "sparseMatrix")
-    } else {
+    } else
+    {
         D <- as(D, "sparseMatrix")
     }
 
@@ -231,6 +233,9 @@ admm.genlasso <- function(x,
                       eps_rel = rel.tol,
                       rho     = rho),
                  PACKAGE = "personalizedLong")
+
+    res$beta[is.nan(res$beta)] <- 0
+
     res
 }
 
@@ -279,46 +284,51 @@ error.bars <- function(x, upper, lower, width = 0.02, ...)
 
 
 
-cv_genlasso=function(outlist,lambda,x,y,weights,foldid,type.measure,grouped,keep=FALSE){
-    typenames=c(deviance="Mean-Squared Error",mse="Mean-Squared Error",mae="Mean Absolute Error")
+cv_genlasso <- function(outlist,lambda,x,y,weights,foldid,type.measure,grouped,keep=FALSE)
+{
+    typenames <- c(deviance="Mean-Squared Error",mse="Mean-Squared Error",mae="Mean Absolute Error")
     if(type.measure=="default")type.measure="mse"
-    if(!match(type.measure,c("mse","mae","deviance"),FALSE)){
+    if(!match(type.measure,c("mse","mae","deviance"),FALSE))
+    {
         warning("Only 'mse', 'deviance' or 'mae'  available for Gaussian models; 'mse' used")
         type.measure="mse"
     }
 
-    predmat=matrix(NA,length(y),length(lambda))
-    nfolds=max(foldid)
-    nlams=double(nfolds)
-    for(i in seq(nfolds)){
-        which=foldid==i
-        fitobj=outlist[[i]]
+    predmat <- matrix(NA, NROW(y), length(lambda))
+    nfolds  <- max(foldid)
+    nlams   <- double(nfolds)
+    for(i in seq(nfolds))
+    {
+        which  <- foldid == i
+        fitobj <- outlist[[i]]
         #preds=predict(fitobj, Xnew = x[which,,drop=FALSE], lambda = lambda)$fit
-        preds = x[which,,drop=FALSE] %*% fitobj$beta[-1,]
-        nlami=length(lambda)
-        predmat[which,seq(nlami)]=preds
-        nlams[i]=nlami
+        preds  <- x[which,,drop = FALSE] %*% fitobj$beta[-1,]
+        nlami  <- length(lambda)
+        predmat[which, seq(nlami)] <- preds
+        nlams[i] <- nlami
     }
 
-    N=length(y) - apply(is.na(predmat),2,sum)
+    N <- length(y) - apply(is.na(predmat), 2, sum)
     cvraw=switch(type.measure,
                  "mse"=(y-predmat)^2,
                  "deviance"=(y-predmat)^2,
                  "mae"=abs(y-predmat)
     )
-    if( (length(y)/nfolds <3)&&grouped){
+    if( (length(y)/nfolds <3)&&grouped)
+    {
         warning("Option grouped=FALSE enforced in cv.glmnet, since < 3 observations per fold",call.=FALSE)
         grouped=FALSE
     }
-    if(grouped){
-        cvob=cvcompute(cvraw,weights,foldid,nlams)
-        cvraw=cvob$cvraw;weights=cvob$weights;N=cvob$N
+    if(grouped)
+    {
+        cvob  <- cvcompute(cvraw,weights,foldid,nlams)
+        cvraw <- cvob$cvraw; weights=cvob$weights; N=cvob$N
     }
 
-    cvm=apply(cvraw,2,weighted.mean,w=weights,na.rm=TRUE)
-    cvsd=sqrt(apply(scale(cvraw,cvm,FALSE)^2,2,weighted.mean,w=weights,na.rm=TRUE)/(N-1))
-    out=list(cvm=cvm,cvsd=cvsd,name=typenames[type.measure])
-    if(keep)out$fit.preval=predmat
+    cvm  <- apply(cvraw,2,weighted.mean,w=weights,na.rm=TRUE)
+    cvsd <- sqrt(apply(scale(cvraw,cvm,FALSE)^2,2,weighted.mean,w=weights,na.rm=TRUE)/(N-1))
+    out  <- list(cvm=cvm,cvsd=cvsd,name=typenames[type.measure])
+    if(keep)out$fit.preval <- predmat
     out
 }
 
