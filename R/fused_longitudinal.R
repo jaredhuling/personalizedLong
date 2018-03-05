@@ -156,29 +156,29 @@
 #'
 #'
 subgroupLong <- function(x,
-                              y,
-                              trt,
-                              family         = c("gaussian", "binomial", "coxph"),
-                              #method   = c("tian", "owl"),
-                              weights        = NULL,
-                              type.measure   = c("mse","deviance","class","auc","mae"),
-                              lambda         = numeric(0),
-                              lasso.penalize = NULL,
-                              gamma          = 1,
-                              nlambda        = 100L,
-                              nfolds         = 10L,
-                              foldid         = NULL,
-                              boot           = FALSE,
-                              B              = 100L,
-                              boot.type      = c("replacement", "mofn"),
-                              m.frac         = 0.9,
-                              parallel       = FALSE,
-                              abs.tol        = 1e-5,
-                              rel.tol        = 1e-5,
-                              maxit          = 250,
-                              maxit.cv       = 250,
-                              rho            = NULL,
-                              ...)
+                         y,
+                         trt,
+                         family         = c("gaussian", "binomial", "coxph"),
+                         #method   = c("tian", "owl"),
+                         weights        = NULL,
+                         type.measure   = c("mse","deviance","class","auc","mae"),
+                         lambda         = numeric(0),
+                         lasso.penalize = NULL,
+                         gamma          = 1,
+                         nlambda        = 100L,
+                         nfolds         = 10L,
+                         foldid         = NULL,
+                         boot           = FALSE,
+                         B              = 100L,
+                         boot.type      = c("replacement", "mofn"),
+                         m.frac         = 0.9,
+                         parallel       = FALSE,
+                         abs.tol        = 1e-5,
+                         rel.tol        = 1e-5,
+                         maxit          = 250,
+                         maxit.cv       = 250,
+                         rho            = NULL,
+                         ...)
 {
     family       <- match.arg(family)
     #method <- match.arg(method)
@@ -1046,15 +1046,20 @@ cv.fusedlasso <- function(x,
                           ...) {
     N = nrow(x)
     P = ncol(x)
-    if (missing(weights)) {
+    if (missing(weights))
+    {
         weights <- rep(1.0, N)
     }
-    if (is.null(lasso.penalize)) {
+    if (is.null(lasso.penalize))
+    {
         lasso.penalize <- rep(1, P)
-    } else if (length(lasso.penalize) == 1) {
-        if (lasso.penalize) {
+    } else if (length(lasso.penalize) == 1)
+    {
+        if (lasso.penalize)
+        {
             lasso.penalize <- rep(1, P)
-        } else {
+        } else
+        {
             lasso.penalize <- NULL
         }
     }
@@ -1077,10 +1082,12 @@ cv.fusedlasso <- function(x,
                            rho          = rho,
                            ...))
     } else {
-        if (any( apply(x, 2, sd) == 0 )) {
-            intercept = TRUE
-        } else {
-            intercept = FALSE
+        if (any( apply(x, 2, sd) == 0 ))
+        {
+            intercept <- TRUE
+        } else
+        {
+            intercept <- FALSE
         }
         ngamma <- length(gamma)
         model.list <- D.list <- vector(mode = "list", length = ngamma)
@@ -1088,17 +1095,21 @@ cv.fusedlasso <- function(x,
             for (g in 1:ngamma) {
                 gamma.cur <- gamma[g]
 
-                if (!is.null(lasso.penalize)) {
+                if (!is.null(lasso.penalize))
+                {
                     D.lasso  <- gamma.cur * diag(ncol(D))
                     keep.idx <- which((1 * lasso.penalize) != 0)
 
-                    if (length(keep.idx) > 0) {
+                    if (length(keep.idx) > 0)
+                    {
                         D.lasso <- D.lasso[keep.idx, ]
                         D.cur   <- rbind(D, D.lasso)
-                    } else {
+                    } else
+                    {
                         D.cur <- D
                     }
-                } else {
+                } else
+                {
                     D.cur <- D
                 }
 
@@ -1205,9 +1216,15 @@ cv.genlasso <- function(x,
                         maxit        = 250,
                         maxit.cv     = 250,
                         rho          = NULL,
-                        ...){
-    if(missing(type.measure))type.measure="default"
-    else type.measure=match.arg(type.measure)
+                        ...)
+{
+    if (missing(type.measure))
+    {
+        type.measure <- "default"
+    } else
+    {
+        type.measure <- match.arg(type.measure)
+    }
     #if(!is.null(lambda)&&length(lambda)<2)stop("Need more than one value of lambda for cv.glmnet")
     N <- nrow(x)
     if(missing(weights))weights=rep(1.0,N)else weights=as.double(weights)
@@ -1249,9 +1266,24 @@ cv.genlasso <- function(x,
     genlasso.object$beta   <- genlasso.object$beta[-1,] # remove the intercept (we aren't using it)
     augmented.var.zero.idx <- apply(as.matrix(genlasso.object$beta.aug[-1,]), 2, function(xx) which(xx == 0))
     lasso.idx              <- which(rowSums(D != 0) == 1)
-    for (ii in 1:length(augmented.var.zero.idx))
+
+    if (is.null(dim(augmented.var.zero.idx)))
     {
-        zero.idx <- intersect(augmented.var.zero.idx[[ii]], lasso.idx)
+        len_ii <- length(augmented.var.zero.idx)
+    } else
+    {
+        len_ii <- ncol(augmented.var.zero.idx)
+    }
+
+    for (ii in 1:len_ii)
+    {
+        if (is.list(augmented.var.zero.idx))
+        {
+            zero.idx <- intersect(augmented.var.zero.idx[[ii]], lasso.idx)
+        } else
+        {
+            zero.idx <- intersect(augmented.var.zero.idx[,ii], lasso.idx)
+        }
         # get beta index of all coefficients which are zero
         if (length(zero.idx))
         {
