@@ -253,6 +253,8 @@ subgroupLong <- function(x,
         stop("trt with more than 2 levels not allowed.")
     }
 
+    if (!all(trt.vals == c(0,1))) stop("trt must take values 0 and 1")
+
     ## check to make sure weights are valid
     if (!is.null(weights))
     {
@@ -481,9 +483,32 @@ subgroupLong <- function(x,
             beta.hat.t   <- beta.hat.orig[idx.cur.col]
 
             ## apply scores on original sample
+            xbeta.cur.all               <- drop(cbind(1, x[[t]]) %*% beta.hat.t)
+
+            if (t == 1)
+            {
+                xbeta.all <- xbeta.cur.all
+            } else
+            {
+                xbeta.all <- xbeta.cur.all + xbeta.all
+            }
+        }
+
+        xbeta.all <- xbeta.all / nperiods
+
+        D.fused.train                  <- sign(xbeta.all)
+        D.fused.train[D.fused.train == -1] <- 0                     # recode as 0/1
+
+        for (t in 1:nperiods)
+        {
+            idx.cur.row  <- (cum.nobs.vec.full[t] + 1):(cum.nobs.vec.full[t+1])
+            idx.cur.col  <- (ncol.vec.trt.cumsum[t] + 1):(ncol.vec.trt.cumsum[t+1])
+
+            beta.hat.t   <- beta.hat.orig[idx.cur.col]
+
+            ## apply scores on original sample
             xbeta.cur               <- drop(cbind(1, x[[t]]) %*% beta.hat.t)
-            D.cur                   <- sign(xbeta.cur)
-            D.cur[D.cur == -1] <- 0                     # recode as 0/1
+            D.cur                   <- D.fused.train
             y.cur                   <- y[[t]]
             trt.cur                 <- trt[[t]]
             weights.cur             <- weights[[t]]
@@ -589,7 +614,7 @@ subgroupLong <- function(x,
                 {
                     W.list.samp[[t]]      <- W.list[[t]][samp.idx.list[[t]], ]
                     y.tmp                 <- y[[t]] # - mean(y[[t]])
-                    y.list.samp[[t]]      <- y.tmp[samp.idx.list[[t]]] - mean(y.tmp[samp.idx.list[[t]]])
+                    y.list.samp[[t]]      <- y.tmp[samp.idx.list[[t]]]# - mean(y.tmp[samp.idx.list[[t]]])
                     trt.list.samp[[t]]    <- trt[[t]][samp.idx.list[[t]]]
                     weight.list.samp[[t]] <- weights[[t]][samp.idx.list[[t]]]
 
@@ -599,8 +624,10 @@ subgroupLong <- function(x,
                 }
                 W.full.samp <- as.matrix(bdiag(W.list.samp))
 
+                folds.1 <- sample(rep(seq(nfolds), length = nobs.vec.samp[1]))
                 ## make sure to do stratified k-fold sampling within each time period
                 foldid.samp <- unlist(lapply(nobs.vec.samp, function(n) sample(rep(seq(nfolds), length = n))  ))
+                foldid.samp <- rep(list(folds.1), length(nobs.vec.samp))
 
                 cv.model.samp <- cv.fusedlasso(x              = W.full.samp,
                                                y              = y.full.samp,
@@ -632,16 +659,50 @@ subgroupLong <- function(x,
 
                     ## apply scores on bootstrap sample
                     xbeta.cur          <- drop(cbind(1, x[[t]][samp.idx.list[[t]], ]) %*% beta.hat.s.t)
-                    D.cur              <- sign(xbeta.cur)
-                    D.cur[D.cur == -1] <- 0                     # recode as 0/1
+
+                    ## apply scores on original sample
+                    xbeta.cur.orig               <- drop(cbind(1, x[[t]]) %*% beta.hat.s.t)
+
+                    if (t == 1)
+                    {
+                        xbeta.all <- xbeta.cur
+                        xbeta.all.orig <- xbeta.cur.orig
+                    } else
+                    {
+                        xbeta.all <- xbeta.all + xbeta.cur
+                        xbeta.all.orig <- xbeta.all.orig + xbeta.cur.orig
+                    }
+                }
+
+                xbeta.all <- xbeta.all / nperiods
+                xbeta.all.orig <- xbeta.all.orig / nperiods
+
+                D.fused                <- sign(xbeta.all)
+                D.fused[D.fused == -1] <- 0      # recode as 0/1
+
+                D.fused.orig                     <- sign(xbeta.all.orig)
+                D.fused.orig[D.fused.orig == -1] <- 0                     # recode as 0/1
+
+                for (t in 1:nperiods)
+                {
+                    idx.cur.row      <- (cum.nobs.vec[t] + 1):(cum.nobs.vec[t+1])
+                    idx.cur.row.full <- (cum.nobs.vec.full[t] + 1):(cum.nobs.vec.full[t+1])
+                    idx.cur.col      <- (ncol.vec.trt.cumsum[t] + 1):(ncol.vec.trt.cumsum[t+1])
+
+                    beta.hat.s.t     <- beta.hat.s[idx.cur.col]
+
+                    ## apply scores on bootstrap sample
+                    xbeta.cur          <- xbeta.all
+
+                    D.cur <- D.fused
+
                     y.cur              <- y[[t]][samp.idx.list[[t]]] #y.list.samp[[t]]
                     trt.cur            <- trt.list.samp[[t]]
                     weights.cur        <- weight.list.samp[[t]]
 
-                    ## apply scores on original sample
-                    xbeta.cur.orig               <- drop(cbind(1, x[[t]]) %*% beta.hat.s.t)
-                    D.cur.orig                   <- sign(xbeta.cur.orig)
-                    D.cur.orig[D.cur.orig == -1] <- 0                     # recode as 0/1
+
+                    D.cur.orig <- D.fused.orig
+
                     y.cur.orig                   <- y[[t]]
                     trt.cur.orig                 <- trt[[t]]
                     weights.cur.orig             <- weights[[t]]
