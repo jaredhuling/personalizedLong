@@ -475,12 +475,16 @@ subgroupLong <- function(x,
         nobs.vec.full     <- unlist(lapply(x, NROW))
         cum.nobs.vec.full <- c(0, cumsum(nobs.vec.full))
 
+        beta.mat.all <- matrix(0, nrow = max(ncol.vec.trt.cumsum), ncol = nperiods)
+
         for (t in 1:nperiods)
         {
             idx.cur.row  <- (cum.nobs.vec.full[t] + 1):(cum.nobs.vec.full[t+1])
             idx.cur.col  <- (ncol.vec.trt.cumsum[t] + 1):(ncol.vec.trt.cumsum[t+1])
 
             beta.hat.t   <- beta.hat.orig[idx.cur.col]
+
+            beta.mat.all[,t] <- beta.hat.t
 
             ## apply scores on original sample
             xbeta.cur.all               <- drop(cbind(1, x[[t]]) %*% beta.hat.t)
@@ -627,7 +631,7 @@ subgroupLong <- function(x,
                 folds.1 <- sample(rep(seq(nfolds), length = nobs.vec.samp[1]))
                 ## make sure to do stratified k-fold sampling within each time period
                 foldid.samp <- unlist(lapply(nobs.vec.samp, function(n) sample(rep(seq(nfolds), length = n))  ))
-                foldid.samp <- rep(list(folds.1), length(nobs.vec.samp))
+                foldid.samp <- unlist(rep(list(folds.1), length(nobs.vec.samp)))
 
                 cv.model.samp <- cv.fusedlasso(x              = W.full.samp,
                                                y              = y.full.samp,
@@ -897,7 +901,15 @@ subgroupLong <- function(x,
         train.bias.corrected.res.list <- bias.res.list <- NULL
     }
 
-    ret <- list(benefit.scores      = benefit.all.full,
+    vnames <- c("Trt", colnames(x[[1]]))
+
+    if (is.null(x[[1]])) vnames <- c("Trt", paste0("V", 1:ncol(x[[1]])))
+
+    colnames(beta.mat.all) <- paste0(t, 1:nperiods)
+    rownames(beta.mat.all) <- vnames
+
+    ret <- list(beta.mat            = beta.mat.all,
+                benefit.scores      = benefit.all.full,
                 trt.assignments     = trt.assignments,
                 benefit.score.list  = benefit.score.list,
                 trt.assignment.list = trt.assignment.list,
