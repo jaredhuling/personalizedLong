@@ -618,7 +618,7 @@ subgroupLong <- function(x,
                 {
                     W.list.samp[[t]]      <- W.list[[t]][samp.idx.list[[t]], ]
                     y.tmp                 <- y[[t]] # - mean(y[[t]])
-                    y.list.samp[[t]]      <- y.tmp[samp.idx.list[[t]]]# - mean(y.tmp[samp.idx.list[[t]]])
+                    y.list.samp[[t]]      <- y.tmp[samp.idx.list[[t]]] - mean(y.tmp[samp.idx.list[[t]]])
                     trt.list.samp[[t]]    <- trt[[t]][samp.idx.list[[t]]]
                     weight.list.samp[[t]] <- weights[[t]][samp.idx.list[[t]]]
 
