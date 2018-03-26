@@ -475,7 +475,7 @@ subgroupLong <- function(x,
         nobs.vec.full     <- unlist(lapply(x, NROW))
         cum.nobs.vec.full <- c(0, cumsum(nobs.vec.full))
 
-        beta.mat.all <- matrix(0, nrow = max(ncol.vec.trt.cumsum), ncol = nperiods)
+        beta.mat.all <- matrix(0, nrow = max(nvars.vec) + 1, ncol = nperiods)
 
         for (t in 1:nperiods)
         {
@@ -901,9 +901,16 @@ subgroupLong <- function(x,
         train.bias.corrected.res.list <- bias.res.list <- NULL
     }
 
-    vnames <- c("Trt", colnames(x[[1]]))
+    vnames <- colnames(x[[1]])
 
-    if (is.null(x[[1]])) vnames <- c("Trt", paste0("V", 1:ncol(x[[1]])))
+    if (is.null(vnames))
+    {
+        vnames <- c("Trt", paste0("V", 1:ncol(x[[1]])))
+    } else
+    {
+        vnames <- c("Trt", colnames(x[[1]]) )
+    }
+
 
     colnames(beta.mat.all) <- paste0(t, 1:nperiods)
     rownames(beta.mat.all) <- vnames
