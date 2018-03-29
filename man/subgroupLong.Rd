@@ -5,9 +5,10 @@
 \title{interaction detection for longitudinal outcomes using fused lasso}
 \usage{
 subgroupLong(x, y, trt, family = c("gaussian", "binomial", "coxph"),
-  weights = NULL, type.measure = c("mse", "deviance", "class", "auc",
-  "mae"), lambda = numeric(0), lasso.penalize = NULL, gamma = 1,
-  nlambda = 100L, nfolds = 10L, foldid = NULL, boot = FALSE, B = 100L,
+  method = c("weighting", "a_learning"), pi.x = NULL, weights = NULL,
+  type.measure = c("mse", "deviance", "class", "auc", "mae"),
+  lambda = numeric(0), lasso.penalize = NULL, gamma = 1, nlambda = 100L,
+  nfolds = 10L, foldid = NULL, boot = FALSE, B = 100L,
   boot.type = c("replacement", "mofn"), m.frac = 0.9, parallel = FALSE,
   abs.tol = 1e-05, rel.tol = 1e-05, maxit = 250, maxit.cv = 250,
   rho = NULL, ...)
@@ -24,7 +25,13 @@ Each row is an observation, each column corresponds to a covariate}
 \item{family}{"gaussian" for least squares problems, "binomial" for binary response.
 "coxph" for time-to-event outcomes}
 
-\item{weights}{observation weights}
+\item{method}{either \code{"weighting"} for the weighting loss function or \code{"a_learning"} for the
+A-learning loss function. The latter may be less sensitive to propensity scores close to 0 or 1}
+
+\item{pi.x}{a vector or list of propensity scores. If left unspecified, will default to constant propensity
+based on the sample proportion of treated observations}
+
+\item{weights}{a vector or list of observation weights}
 
 \item{type.measure}{one of c("mse","deviance","class","auc","mae") to be used for cross validation}
 

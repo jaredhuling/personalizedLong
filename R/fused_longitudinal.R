@@ -11,7 +11,11 @@
 #' @param trt list of length equal to the number of time periods. each element of trt is a vector of treatment indicators
 #' @param family "gaussian" for least squares problems, "binomial" for binary response.
 #' "coxph" for time-to-event outcomes
-#' @param weights observation weights
+#' @param method either \code{"weighting"} for the weighting loss function or \code{"a_learning"} for the
+#' A-learning loss function. The latter may be less sensitive to propensity scores close to 0 or 1
+#' @param pi.x a vector or list of propensity scores. If left unspecified, will default to constant propensity
+#' based on the sample proportion of treated observations
+#' @param weights a vector or list of observation weights
 #' @param type.measure  one of c("mse","deviance","class","auc","mae") to be used for cross validation
 #' @param lambda tuning parameter values for lasso penalty
 #' @param gamma ratio of fused lasso to lasso tuning parameter
@@ -159,7 +163,8 @@ subgroupLong <- function(x,
                          y,
                          trt,
                          family         = c("gaussian", "binomial", "coxph"),
-                         #method   = c("tian", "owl"),
+                         method         = c("weighting", "a_learning"),
+                         pi.x           = NULL,
                          weights        = NULL,
                          type.measure   = c("mse","deviance","class","auc","mae"),
                          lambda         = numeric(0),
@@ -181,7 +186,7 @@ subgroupLong <- function(x,
                          ...)
 {
     family       <- match.arg(family)
-    #method <- match.arg(method)
+    method       <- match.arg(method)
     type.measure <- match.arg(type.measure)
     boot.type    <- match.arg(boot.type)
 
@@ -284,6 +289,54 @@ subgroupLong <- function(x,
     {
         weights <- vector(mode = "list", length = nperiods)
         for (t in 1:nperiods) weights[[t]] <- rep(1, nobs.vec[t])
+    }
+
+    ## check to make sure pi.x are valid
+    if (!is.null(pi.x))
+    {
+        if (!is.list(pi.x))
+        {
+            if (!all(nobs.vec == NROW(pi.x)))
+            {
+                stop("pi.x must be same length as each element in y list.")
+            }
+            pi.x <- rep(list(pi.x), nperiods)
+        } else
+        {
+            if (length(pi.x) != nperiods)
+            {
+                stop("pi.x must be a list with same length as y")
+            }
+            for (t in 1:nperiods)
+            {
+                if ( nobs.vec[t] != NROW(pi.x[[t]]) )
+                {
+                    stop(paste("Length of element", t, "in pi.x is different than length of element", t, "in y."))
+                }
+                pi.x[[t]] <- drop(pi.x[[t]])
+            }
+        }
+    } else
+    {
+        pi.x <- vector(mode = "list", length = nperiods)
+        for (t in 1:nperiods) pi.x[[t]] <- rep(mean(trt[[t]] == 1), nobs.vec[t])
+    }
+
+    inv.pi.x.wts <- weights
+
+    for (t in 1:nperiods)
+    {
+        inv.pi.x.wts[[t]] <- (1 / (pi.x[[t]] * (trt[[t]] == 1) + (1 - pi.x[[t]]) * (trt[[t]] != 1)))
+        # clip extreme weights
+        inv.pi.x.wts[[t]][inv.pi.x.wts[[t]] > 1e5] <- 1e5
+    }
+
+    if (method == "weighting")
+    {
+        for (t in 1:nperiods)
+        {
+            weights[[t]] <- weights[[t]] * inv.pi.x.wts[[t]]
+        }
     }
 
 
@@ -411,7 +464,16 @@ subgroupLong <- function(x,
     total.colnames      <- numeric(sum(nvars.vec) + nperiods)
     for (t in 1:nperiods)
     {
-        W.list[[t]] <- (2 * trt[[t]] - 1) * cbind(1, x[[t]])
+
+        if (method == "weighting")
+        {
+            W.list[[t]] <- (2 * trt[[t]] - 1) * cbind(1, x[[t]])
+        } else
+        {
+            W.list[[t]] <- (trt[[t]] - pi.x[[t]]) * cbind(1, x[[t]])
+        }
+
+
         y.full[((cumsum.nobs.vec[t]) + 1):cumsum.nobs.vec[t+1]]                     <- y[[t]] - mean(y[[t]])
         weight.full[((cumsum.nobs.vec[t]) + 1):cumsum.nobs.vec[t+1]]                <- weights[[t]]
         lasso.penalize.vec[((ncol.vec.trt.cumsum[t]) + 1):ncol.vec.trt.cumsum[t+1]] <- c(0, lasso.penalize[[t]]) ## don't lasso-penalize treatment
@@ -515,7 +577,7 @@ subgroupLong <- function(x,
             D.cur                   <- D.fused.train
             y.cur                   <- y[[t]]
             trt.cur                 <- trt[[t]]
-            weights.cur             <- weights[[t]]
+            weights.cur             <- inv.pi.x.wts[[t]]
 
             # Emprical average among all
             train.res.list[[t]][1]      <- sum(y.cur * weights.cur) / sum(weights.cur)
@@ -702,7 +764,7 @@ subgroupLong <- function(x,
 
                     y.cur              <- y[[t]][samp.idx.list[[t]]] #y.list.samp[[t]]
                     trt.cur            <- trt.list.samp[[t]]
-                    weights.cur        <- weight.list.samp[[t]]
+                    weights.cur        <- inv.pi.x.wts[[t]][samp.idx.list[[t]]]
 
 
                     D.cur.orig <- D.fused.orig
