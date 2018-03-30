@@ -6,9 +6,9 @@
 \usage{
 subgroupLong(x, y, trt, family = c("gaussian", "binomial", "coxph"),
   method = c("weighting", "a_learning"), pi.x = NULL, weights = NULL,
-  type.measure = c("mse", "deviance", "class", "auc", "mae"),
-  lambda = numeric(0), lasso.penalize = NULL, gamma = 1, nlambda = 100L,
-  nfolds = 10L, foldid = NULL, boot = FALSE, B = 100L,
+  idx.list = NULL, type.measure = c("mse", "deviance", "class", "auc",
+  "mae"), lambda = numeric(0), lasso.penalize = NULL, gamma = 1,
+  nlambda = 100L, nfolds = 10L, foldid = NULL, boot = FALSE, B = 100L,
   boot.type = c("replacement", "mofn"), m.frac = 0.9, parallel = FALSE,
   abs.tol = 1e-05, rel.tol = 1e-05, maxit = 250, maxit.cv = 250,
   rho = NULL, ...)
@@ -32,6 +32,10 @@ A-learning loss function. The latter may be less sensitive to propensity scores 
 based on the sample proportion of treated observations}
 
 \item{weights}{a vector or list of observation weights}
+
+\item{idx.list}{if x is specified as a list (suggesting that the sample sizes vary over time), the user must specify idx.list,
+which is a list of patient indices. T t-th list element should be a vector of indices with i-th element being the patient ID
+for the i-th row of x[[t]]}
 
 \item{type.measure}{one of c("mse","deviance","class","auc","mae") to be used for cross validation}
 

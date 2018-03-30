@@ -16,6 +16,9 @@
 #' @param pi.x a vector or list of propensity scores. If left unspecified, will default to constant propensity
 #' based on the sample proportion of treated observations
 #' @param weights a vector or list of observation weights
+#' @param idx.list if x is specified as a list (suggesting that the sample sizes vary over time), the user must specify idx.list,
+#' which is a list of patient indices. T t-th list element should be a vector of indices with i-th element being the patient ID
+#' for the i-th row of x[[t]]
 #' @param type.measure  one of c("mse","deviance","class","auc","mae") to be used for cross validation
 #' @param lambda tuning parameter values for lasso penalty
 #' @param gamma ratio of fused lasso to lasso tuning parameter
@@ -166,6 +169,7 @@ subgroupLong <- function(x,
                          method         = c("weighting", "a_learning"),
                          pi.x           = NULL,
                          weights        = NULL,
+                         idx.list       = NULL,
                          type.measure   = c("mse","deviance","class","auc","mae"),
                          lambda         = numeric(0),
                          lasso.penalize = NULL,
@@ -352,6 +356,7 @@ subgroupLong <- function(x,
             x <- rep(list(x), nperiods)
             created.list <- TRUE
         }
+        idx.list <- rep(list(1:nrow(x)), nperiods)
     } else
     {
         if (length(x) != nperiods)
@@ -411,6 +416,15 @@ subgroupLong <- function(x,
                 }
             }
             varnames.list[[t]] <- vnames.tmp
+        }
+        if (is.null(idx.list))
+        {
+            stop("idx.list must be provided if x is provided as a list")
+        }
+
+        if (!is.list(idx.list))
+        {
+            stop("idx.list must be provided if x is provided as a list")
         }
     }
 
@@ -495,7 +509,24 @@ subgroupLong <- function(x,
         if(is.null(foldid))
         {
             ## make sure to do stratified k-fold sampling within each time period
-            foldid <- unlist(lapply(nobs.vec, function(n) sample(rep(seq(nfolds), length = n))  ))
+            #foldid <- unlist(lapply(nobs.vec, function(n) sample(rep(seq(nfolds), length = n))  ))
+
+            foldid.t1 <- sample(rep(seq(nfolds), length = nobs.vec[1]))
+
+            # this makes sure each observation is in the same fold across time
+            foldid.list <- vector(mode = "list", length = nperiods)
+            for (t in 1:nperiods)
+            {
+                # #samp.idx.list[[t]] <- samp.all[samp.all > nrow.vec.cumsum[t] & samp.all <= nrow.vec.cumsum[t + 1]] - nrow.vec.cumsum[t]
+                # samp.idx.list[[t]] <- (1:nobs.vec[t])[idx.samp[idx.samp %in% idx.list[[t]]]]
+
+                idx.foldid <- match(idx.list[[t]], idx.list[[1]])
+
+                foldid.list[[t]] <- foldid.t1[idx.foldid]
+            }
+
+            foldid <- unlist(foldid.list)
+
         } else
         {
             nfolds <- max(foldid)
@@ -556,11 +587,13 @@ subgroupLong <- function(x,
                 xbeta.all <- xbeta.cur.all
             } else
             {
-                xbeta.all <- xbeta.cur.all + xbeta.all
+                mat.idx <- match(idx.list[[t]], idx.list[[1]])
+                xbeta.all[mat.idx] <- xbeta.cur.all + xbeta.all[mat.idx]
             }
         }
 
-        xbeta.all <- xbeta.all / nperiods
+        # divide by number of times each patient was in the sample
+        xbeta.all <- xbeta.all / sapply(idx.list[[1]], function(id) sum(unlist(idx.list) == id))
 
         D.fused.train                  <- sign(xbeta.all)
         D.fused.train[D.fused.train == -1] <- 0                     # recode as 0/1
@@ -574,7 +607,7 @@ subgroupLong <- function(x,
 
             ## apply scores on original sample
             xbeta.cur               <- drop(cbind(1, x[[t]]) %*% beta.hat.t)
-            D.cur                   <- D.fused.train
+            D.cur                   <- D.fused.train[match(idx.list[[t]], idx.list[[1]])]
             y.cur                   <- y[[t]]
             trt.cur                 <- trt[[t]]
             weights.cur             <- inv.pi.x.wts[[t]]
@@ -661,17 +694,23 @@ subgroupLong <- function(x,
                     samp.all <- sample.int(nrow(x[[1]]), size = round(nrow(x[[1]]) ^ m.frac, digits = 0), replace = FALSE)
                 } else
                 {
-                    samp.all <- sample.int(nrow(x[[1]]), size = total.nobs, replace = TRUE)
+                    samp.all <- sample.int(nrow(x[[1]]), size = nrow(x[[1]]), replace = TRUE)
                 }
+                idx.samp <- idx.list[[1]][samp.all]
                 samp.idx.list <- vector(mode = "list", length = nperiods)
                 for (t in 1:nperiods)
                 {
                     #samp.idx.list[[t]] <- samp.all[samp.all > nrow.vec.cumsum[t] & samp.all <= nrow.vec.cumsum[t + 1]] - nrow.vec.cumsum[t]
-                    samp.idx.list[[t]] <- samp.all
+                    #samp.idx.list[[t]] <- (1:nobs.vec[t])[idx.samp[idx.samp %in% idx.list[[t]]]]
+
+                    mat.idx <- match(idx.samp, idx.list[[t]])
+                    mat.idx <- mat.idx[!is.na(mat.idx)]
+                    samp.idx.list[[t]] <- mat.idx
                 }
 
+
                 nobs.samp     <- length(unlist(samp.idx.list))
-                W.list.samp   <- trt.list.samp <- y.list.samp <- weight.list.samp <- vector(mode = "list", length = nperiods)
+                W.list.samp   <- trt.list.samp <- y.list.samp <- weight.list.samp <- idx.list.samp <- vector(mode = "list", length = nperiods)
                 nobs.vec.samp <- unlist(lapply(samp.idx.list, length))
                 cum.nobs.vec  <- c(0, cumsum(nobs.vec.samp))
                 y.full.samp   <- weights.full.samp <- trt.full.samp <- numeric(nobs.samp)
@@ -679,6 +718,7 @@ subgroupLong <- function(x,
                 for (t in 1:nperiods)
                 {
                     W.list.samp[[t]]      <- W.list[[t]][samp.idx.list[[t]], ]
+                    idx.list.samp[[t]]    <- idx.list[[t]][samp.idx.list[[t]]]
                     y.tmp                 <- y[[t]] # - mean(y[[t]])
                     y.list.samp[[t]]      <- y.tmp[samp.idx.list[[t]]] - mean(y.tmp[samp.idx.list[[t]]])
                     trt.list.samp[[t]]    <- trt[[t]][samp.idx.list[[t]]]
@@ -692,8 +732,22 @@ subgroupLong <- function(x,
 
                 folds.1 <- sample(rep(seq(nfolds), length = nobs.vec.samp[1]))
                 ## make sure to do stratified k-fold sampling within each time period
-                foldid.samp <- unlist(lapply(nobs.vec.samp, function(n) sample(rep(seq(nfolds), length = n))  ))
-                foldid.samp <- unlist(rep(list(folds.1), length(nobs.vec.samp)))
+                #foldid.samp <- unlist(lapply(nobs.vec.samp, function(n) sample(rep(seq(nfolds), length = n))  ))
+                #foldid.samp <- unlist(rep(list(folds.1), length(nobs.vec.samp)))
+
+
+                foldid.t1 <- sample(rep(seq(nfolds), length = nobs.vec.samp[1]))
+
+                # this makes sure each observation is in the same fold across time
+                foldid.list <- vector(mode = "list", length = nperiods)
+                for (t in 1:nperiods)
+                {
+                    idx.foldid <- match(idx.list.samp[[t]], idx.list.samp[[1]])
+
+                    foldid.list[[t]] <- foldid.t1[idx.foldid]
+                }
+
+                foldid.samp <- unlist(foldid.list)
 
                 cv.model.samp <- cv.fusedlasso(x              = W.full.samp,
                                                y              = y.full.samp,
@@ -735,13 +789,16 @@ subgroupLong <- function(x,
                         xbeta.all.orig <- xbeta.cur.orig
                     } else
                     {
-                        xbeta.all <- xbeta.all + xbeta.cur
-                        xbeta.all.orig <- xbeta.all.orig + xbeta.cur.orig
+                        mat.idx.orig <- match(idx.list[[t]], idx.list[[1]])
+                        mat.idx.cur  <- match(idx.list.samp[[t]], idx.list.samp[[1]])
+
+                        xbeta.all[mat.idx.cur]       <- xbeta.all[mat.idx.cur] + xbeta.cur
+                        xbeta.all.orig[mat.idx.orig] <- xbeta.all.orig[mat.idx.orig] + xbeta.cur.orig
                     }
                 }
 
-                xbeta.all <- xbeta.all / nperiods
-                xbeta.all.orig <- xbeta.all.orig / nperiods
+                xbeta.all <- xbeta.all / sapply(idx.list.samp[[1]], function(id) sum(unlist(idx.list.samp) == id))
+                xbeta.all.orig <- xbeta.all.orig / sapply(idx.list[[1]], function(id) sum(unlist(idx.list) == id))
 
                 D.fused                <- sign(xbeta.all)
                 D.fused[D.fused == -1] <- 0      # recode as 0/1
@@ -760,14 +817,14 @@ subgroupLong <- function(x,
                     ## apply scores on bootstrap sample
                     xbeta.cur          <- xbeta.all
 
-                    D.cur <- D.fused
+                    D.cur <- D.fused[match(idx.list.samp[[t]], idx.list.samp[[1]])]
 
                     y.cur              <- y[[t]][samp.idx.list[[t]]] #y.list.samp[[t]]
                     trt.cur            <- trt.list.samp[[t]]
                     weights.cur        <- inv.pi.x.wts[[t]][samp.idx.list[[t]]]
 
 
-                    D.cur.orig <- D.fused.orig
+                    D.cur.orig <- D.fused.orig[match(idx.list[[t]], idx.list[[1]])]
 
                     y.cur.orig                   <- y[[t]]
                     trt.cur.orig                 <- trt[[t]]
