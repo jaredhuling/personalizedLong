@@ -34,6 +34,11 @@ createLongitudinalD <- function(n.time, n.vars, one.intercept = FALSE) {
     D1
 }
 
+genlasso_loss <- function(beta, x, y, lambda, D)
+{
+    0.5 * (1/nrow(x)) * (sum(y - x %*% beta) ^ 2) + lambda * sum(abs(D %*% beta))
+}
+
 createLongitudinalDVarnames <- function(varname.list)
 {
     n.time     <- length(varname.list)
@@ -104,6 +109,7 @@ createLongitudinalDVarnames <- function(varname.list)
 #'                                (by setting \code{lambda = NULL}). The default
 #'                                value is the same as \pkg{glmnet}: 0.0001 if
 #'                                \code{nrow(x) >= ncol(x)} and 0.01 otherwise.
+#' @param adaptive Should we use the adaptive version of ADMM? This is faster generally
 #' @param maxit Maximum number of admm iterations.
 #' @param abs.tol Absolute tolerance parameter.
 #' @param rel.tol Relative tolerance parameter.
@@ -140,6 +146,7 @@ admm.genlasso <- function(x,
                           lambda.min.ratio = NULL,
                           intercept        = FALSE,
                           standardize      = FALSE,
+                          adaptive         = FALSE,
                           maxit            = 5000L,
                           abs.tol          = 1e-7,
                           rel.tol          = 1e-7,
@@ -221,18 +228,35 @@ admm.genlasso <- function(x,
     rel.tol <- as.numeric(rel.tol)
     rho     <- if(is.null(rho))  -1.0  else  as.numeric(rho)
 
-    res <- .Call("admm_genlasso",
-                 x, y, D,
-                 lambda,
-                 nlambda,
-                 lambda.min.ratio,
-                 standardize,
-                 intercept,
-                 list(maxit   = maxit,
-                      eps_abs = abs.tol,
-                      eps_rel = rel.tol,
-                      rho     = rho),
-                 PACKAGE = "personalizedLong")
+    if (adaptive)
+    {
+        res <- .Call("admm_genlasso_adaptive",
+                     x, y, D,
+                     lambda,
+                     nlambda,
+                     lambda.min.ratio,
+                     standardize,
+                     intercept,
+                     list(maxit   = maxit,
+                          eps_abs = abs.tol,
+                          eps_rel = rel.tol,
+                          rho     = rho),
+                     PACKAGE = "personalizedLong")
+    } else
+    {
+        res <- .Call("admm_genlasso",
+                     x, y, D,
+                     lambda,
+                     nlambda,
+                     lambda.min.ratio,
+                     standardize,
+                     intercept,
+                     list(maxit   = maxit,
+                          eps_abs = abs.tol,
+                          eps_rel = rel.tol,
+                          rho     = rho),
+                     PACKAGE = "personalizedLong")
+    }
 
     res$beta[is.nan(res$beta)] <- 0
 

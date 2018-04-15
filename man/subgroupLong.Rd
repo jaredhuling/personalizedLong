@@ -10,8 +10,8 @@ subgroupLong(x, y, trt, family = c("gaussian", "binomial", "coxph"),
   "mae"), lambda = numeric(0), lasso.penalize = NULL, gamma = 1,
   nlambda = 100L, nfolds = 10L, foldid = NULL, boot = FALSE, B = 100L,
   boot.type = c("replacement", "mofn"), m.frac = 0.9, parallel = FALSE,
-  abs.tol = 1e-05, rel.tol = 1e-05, maxit = 250, maxit.cv = 250,
-  rho = NULL, ...)
+  adaptive = FALSE, abs.tol = 1e-05, rel.tol = 1e-05, maxit = 250,
+  maxit.cv = 250, rho = NULL, ...)
 }
 \arguments{
 \item{x}{list of design matrices; one for each point in time. If a matrix is given, the design matrix is assumed to
@@ -67,6 +67,8 @@ are taken without replacemet for the m-out-of-n bootstrap}
 \item{m.frac}{scalar number strictly between 0 and 1,}
 
 \item{parallel}{boolean indicator of whether or not to utilize parallel computation for cross validation}
+
+\item{adaptive}{should the adaptive ADMM algorithm be used?}
 
 \item{abs.tol}{absolute tolerance for convergence for ADMM. Defaults to 1e-5}
 

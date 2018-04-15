@@ -6,7 +6,8 @@
 \usage{
 admm.genlasso(x, y, D = NULL, lambda = numeric(0), nlambda = 100L,
   lambda.min.ratio = NULL, intercept = FALSE, standardize = FALSE,
-  maxit = 5000L, abs.tol = 1e-07, rel.tol = 1e-07, rho = NULL)
+  adaptive = FALSE, maxit = 5000L, abs.tol = 1e-07, rel.tol = 1e-07,
+  rho = NULL)
 }
 \arguments{
 \item{x}{The design matrix}
@@ -43,6 +44,8 @@ value is the same as \pkg{glmnet}: 0.0001 if
 \item{standardize}{Whether to standardize the design matrix before
 fitting the model. Default is \code{FALSE}. Fitted coefficients
 are always returned on the original scale.}
+
+\item{adaptive}{Should we use the adaptive version of ADMM? This is faster generally}
 
 \item{maxit}{Maximum number of admm iterations.}
 

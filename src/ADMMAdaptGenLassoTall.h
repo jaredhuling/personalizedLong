@@ -1,7 +1,7 @@
-#ifndef ADMMGENLASSOTALL_H
-#define ADMMGENLASSOTALL_H
+#ifndef ADMMADAPTGENLASSOTALL_H
+#define ADMMADAPTGENLASSOTALL_H
 
-#include "FADMMBase.h"
+#include "FADMMBaseAdaptive.h"
 #include "Linalg/BlasWrapper.h"
 #include "Spectra/SymEigsSolver.h"
 #include "ADMMMatOp.h"
@@ -21,7 +21,7 @@
 // b => y
 // f(x) => 1/2 * ||Ax - b||^2
 // g(z) => lambda * ||z||_1
-class ADMMGenLassoTall: public FADMMBase<Eigen::VectorXd, Eigen::SparseVector<double>, Eigen::VectorXd>
+class ADMMAdaptGenLassoTall: public FADMMBaseAdaptive<Eigen::VectorXd, Eigen::VectorXd, Eigen::VectorXd>
 {
 protected:
     typedef float Scalar;
@@ -44,7 +44,6 @@ protected:
     Vector XY;                    // X'Y
     MatrixXd XX;                  // X'X
     SpMat DD;                     // D'D
-    VectorXd Dbeta;               // D * beta
     VectorXd savedEigs;           // saved eigenvalues
     LLT solver;                   // matrix factorization
     bool rho_unspecified;          // was rho unspecified? if so, we must set it
@@ -60,12 +59,13 @@ protected:
     void At_mult(Vector &res, Vector &nu)  { res.swap(nu); }
     // z -> Bz
     void B_mult (Vector &res, SparseVector &gamma) { res = -gamma; }
+    void B_mult (Vector &res, Vector &gamma) { res = -gamma; }
     // ||c||_2
     double c_norm() { return 0.0; }
 
 
 
-static void soft_threshold(SparseVector &res, const Vector &vec, const double &penalty)
+    static void soft_threshold(SparseVector &res, const Vector &vec, const double &penalty)
     {
         int v_size = vec.size();
         res.setZero();
@@ -80,10 +80,30 @@ static void soft_threshold(SparseVector &res, const Vector &vec, const double &p
                 res.insertBack(i) = ptr[i] + penalty;
         }
     }
+
+    static void soft_threshold(VectorXd &res, const VectorXd &vec, const double &penalty)
+    {
+        int v_size = vec.size();
+        res.setZero();
+
+        const double *ptr = vec.data();
+        for(int i = 0; i < v_size; i++)
+        {
+            if(ptr[i] > penalty)
+                res(i) = (ptr[i] - penalty);
+            else if(ptr[i] < -penalty)
+                res(i) = (ptr[i] + penalty);
+        }
+    }
+
+
     void next_beta(Vector &res)
     {
-        Vector rhs = XY - D.adjoint() * adj_nu;
-        rhs += rho * (D.adjoint() * adj_gamma);
+        //Vector rhs = XY - D.adjoint() * adj_nu;
+        //rhs += rho * (D.adjoint() * adj_gamma);
+
+        Vector rhs = XY - D.adjoint() * dual_nu;
+        rhs += rho * (D.adjoint() * aux_gamma);
 
 
         // manual optimization
@@ -93,24 +113,34 @@ static void soft_threshold(SparseVector &res, const Vector &vec, const double &p
 
         res.noalias() = solver.solve(rhs);
     }
-    virtual void next_gamma(SparseVector &res)
+    virtual void next_gamma(VectorXd &res)
     {
         Dbeta = D * main_beta;
-        Vector vec = Dbeta + adj_nu / rho;
+
+        deltaH = Dbeta - old_Dbeta;
+
+        //Vector vec = Dbeta + adj_nu / rho;
+        Vector vec = Dbeta + dual_nu / rho;
         soft_threshold(res, vec, lambda / rho);
     }
     void next_residual(Vector &res)
     {
-        // res = Dbeta;
-        // res -= aux_gamma;
+        res = Dbeta - aux_gamma;
 
         // manual optimization
-        std::copy(Dbeta.data(), Dbeta.data() + dim_aux, res.data());
-        for(SparseVector::InnerIterator iter(aux_gamma); iter; ++iter)
-            res[iter.index()] -= iter.value();
+        //std::copy(Dbeta.data(), Dbeta.data() + dim_aux, res.data());
+        //for(SparseVector::InnerIterator iter(aux_gamma); iter; ++iter)
+        //    res[iter.index()] -= iter.value();
     }
-    void rho_changed_action() {}
-    void update_rho() {}
+    void rho_changed_action()
+    {
+        MatrixXd matToSolve(XX);
+        matToSolve += rho * DD;
+
+        // precompute LLT decomposition of (X'X + rho * D'D)
+        solver.compute(matToSolve.selfadjointView<Eigen::Lower>());
+    }
+    //void update_rho() {}
 
 
 
@@ -165,7 +195,9 @@ static void soft_threshold(SparseVector &res, const Vector &vec, const double &p
     }
     double compute_resid_dual()
     {
-        return rho * std::sqrt(diff_squared_norm(aux_gamma, old_gamma));
+        deltaG = aux_gamma - old_gamma;
+        //return rho * std::sqrt(diff_squared_norm(aux_gamma, old_gamma));
+        return rho * (deltaG.norm());
     }
     double compute_resid_combined()
     {
@@ -173,26 +205,25 @@ static void soft_threshold(SparseVector &res, const Vector &vec, const double &p
         // return rho * resid_primal * resid_primal + rho * tmp.squaredNorm();
 
         // manual optmization
-        return rho * resid_primal * resid_primal + rho * diff_squared_norm(aux_gamma, adj_gamma);
+        return rho * resid_primal * resid_primal + rho * (aux_gamma.array() - adj_gamma.array()).matrix().squaredNorm();
     }
 
 public:
-    ADMMGenLassoTall(ConstGenericMatrix &datX_,
-                     ConstGenericVector &datY_,
-                     const SpMatR &D_,
-                     double eps_abs_ = 1e-6,
-                     double eps_rel_ = 1e-6) :
-    FADMMBase<Eigen::VectorXd, Eigen::SparseVector<double>, Eigen::VectorXd>
-             (datX_.cols(), D_.rows(), D_.rows(),
-              eps_abs_, eps_rel_),
-              datX(datX_.data(), datX_.rows(), datX_.cols()),
-              datY(datY_.data(), datY_.size()),
-              D(D_),
-              XY(datX.transpose() * datY),
-              XX(XtX(datX)),
-              DD(XtX(D)),
-              Dbeta(D_.rows()),
-              lambda0(XY.cwiseAbs().maxCoeff())
+    ADMMAdaptGenLassoTall(ConstGenericMatrix &datX_,
+                          ConstGenericVector &datY_,
+                          const SpMatR &D_,
+                          double eps_abs_ = 1e-6,
+                          double eps_rel_ = 1e-6) :
+    FADMMBaseAdaptive<Eigen::VectorXd, Eigen::VectorXd, Eigen::VectorXd>
+    (datX_.cols(), D_.rows(), D_.rows(),
+     eps_abs_, eps_rel_),
+     datX(datX_.data(), datX_.rows(), datX_.cols()),
+     datY(datY_.data(), datY_.size()),
+     D(D_),
+     XY(datX.transpose() * datY),
+     XX(XtX(datX)),
+     DD(XtX(D)),
+     lambda0(XY.cwiseAbs().maxCoeff())
     {}
 
     double get_lambda_zero() const { return lambda0; }
@@ -204,7 +235,14 @@ public:
         aux_gamma.setZero();
         dual_nu.setZero();
 
+        Dbeta.setZero();
+        old_Dbeta.setZero();
+
+        deltaH.setZero();
+        deltarhoNu.setZero();
+
         adj_gamma.setZero();
+        deltaG.setZero();
         adj_nu.setZero();
 
         lambda = lambda_;
@@ -222,11 +260,12 @@ public:
             Spectra::SymEigsSolver< Double, Spectra::BOTH_ENDS, MatOpSymLower<Double> > eigs(&op, 2, 5);
             //srand(0);
             eigs.init();
-            eigs.compute(1000, 0.01);
+            eigs.compute(1000, 0.0025);
             Vector evals = eigs.eigenvalues();
             savedEigs = evals;
 
-            float lam_fact = datX.rows() * lambda;
+
+            //float lam_fact = datX.rows() * lambda;
             //rho = std::pow(evals[0], 1.0 / 3) * std::pow(lambda, 2.0 / 3);
             /*
             if (lam_fact < evals[1])
@@ -241,6 +280,7 @@ public:
             }
             */
             rho = std::pow(savedEigs[0], 0.333333) * std::pow(lambda, 0.666666);
+
         } else {
             rho_unspecified = false;
         }
@@ -255,11 +295,11 @@ public:
 
         eps_primal = 0.0;
         eps_dual = 0.0;
-        resid_primal = 1e30;
-        resid_dual = 1e30;
+        resid_primal = 1e99;
+        resid_dual = 1e99;
 
         adj_a = 1.0;
-        adj_c = 1e30;
+        adj_c = 1e99;
 
         rho_changed_action();
     }
@@ -298,8 +338,8 @@ public:
 
         eps_primal = 0.0;
         eps_dual = 0.0;
-        resid_primal = 1e30;
-        resid_dual = 1e30;
+        resid_primal = 1e99;
+        resid_dual = 1e99;
 
         // adj_a = 1.0;
         // adj_c = 9999;
