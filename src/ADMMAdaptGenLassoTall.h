@@ -99,11 +99,11 @@ protected:
 
     void next_beta(Vector &res)
     {
-        //Vector rhs = XY - D.adjoint() * adj_nu;
-        //rhs += rho * (D.adjoint() * adj_gamma);
+        Vector rhs = XY - D.adjoint() * adj_nu;
+        rhs += rho * (D.adjoint() * adj_gamma);
 
-        Vector rhs = XY - D.adjoint() * dual_nu;
-        rhs += rho * (D.adjoint() * aux_gamma);
+        //Vector rhs = XY - D.adjoint() * dual_nu;
+        //rhs += rho * (D.adjoint() * aux_gamma);
 
 
         // manual optimization
@@ -119,8 +119,8 @@ protected:
 
         deltaH = Dbeta - old_Dbeta;
 
-        //Vector vec = Dbeta + adj_nu / rho;
-        Vector vec = Dbeta + dual_nu / rho;
+        Vector vec = Dbeta + adj_nu / rho;
+        //Vector vec = Dbeta + dual_nu / rho;
         soft_threshold(res, vec, lambda / rho);
     }
     void next_residual(Vector &res)

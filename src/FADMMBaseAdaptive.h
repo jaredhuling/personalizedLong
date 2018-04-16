@@ -161,8 +161,21 @@ protected:
             betak = betaSD - 0.5 * betaMG;
         }
 
-        alphaCor = crossHnu / (std::sqrt(deltaHSS) * std::sqrt(deltarhoNuSS));
-        betaCor  = crossGgamma / (std::sqrt(deltaGSS) * std::sqrt(deltarhoNuSS));
+        if (deltaHSS <= 1e-12)
+        {
+            alphaCor = 0.0;
+        } else
+        {
+            alphaCor = crossHnu / (std::sqrt(deltaHSS) * std::sqrt(deltarhoNuSS));
+        }
+
+        if (deltaGSS <= 1e-12)
+        {
+            betaCor = 0.0;
+        } else
+        {
+            betaCor  = crossGgamma / (std::sqrt(deltaGSS) * std::sqrt(deltarhoNuSS));
+        }
 
         double epsCor = 0.2;
 
@@ -170,19 +183,19 @@ protected:
 
         if (alphaCor > epsCor & betaCor > epsCor)
         {
-            double rho_old = rho;
+            //double rho_old = rho;
             rho = std::sqrt(alphak * betak);
             //std::cout << "rho: " << rho << " rho old: " << rho_old << std::endl;
             rho_changed_action();
         } else if (alphaCor > epsCor & betaCor <= epsCor)
         {
-            double rho_old = rho;
+            //double rho_old = rho;
             rho = alphak;
             //std::cout << "rho: " << rho << " rho old: " << rho_old << std::endl;
             rho_changed_action();
         } else if (alphaCor <= epsCor & betaCor > epsCor)
         {
-            double rho_old = rho;
+            //double rho_old = rho;
             rho = betak;
             //std::cout << "rho: " << rho << " rho old: " << rho_old << std::endl;
             rho_changed_action();
@@ -267,12 +280,13 @@ public:
         //std::copy(adj_nu.data(), adj_nu.data() + dim_dual, dual_nu.data());
         //Linalg::vec_add(dual_nu.data(), Yscalar(rho), newr.data(), dim_dual);
 
-        //dual_nu.noalias() = adj_nu + rho * newr;
 
         deltarhoNu = rho * newr;
 
 
-        dual_nu.noalias() = dual_nu + deltarhoNu;
+        //dual_nu.noalias() = dual_nu + deltarhoNu;
+
+        dual_nu.noalias() = adj_nu + deltarhoNu;
 
 
     }
