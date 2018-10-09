@@ -6,8 +6,8 @@
 \usage{
 admm.genlasso(x, y, D = NULL, lambda = numeric(0), nlambda = 100L,
   lambda.min.ratio = NULL, intercept = FALSE, standardize = FALSE,
-  adaptive = FALSE, maxit = 5000L, abs.tol = 1e-07, rel.tol = 1e-07,
-  rho = NULL)
+  adaptive = FALSE, maxit = 5000L, abs.tol = 1e-07,
+  rel.tol = 1e-07, rho = NULL)
 }
 \arguments{
 \item{x}{The design matrix}

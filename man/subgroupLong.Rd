@@ -8,10 +8,10 @@ subgroupLong(x, y, trt, family = c("gaussian", "binomial", "coxph"),
   method = c("weighting", "a_learning"), pi.x = NULL, weights = NULL,
   idx.list = NULL, type.measure = c("mse", "deviance", "class", "auc",
   "mae"), lambda = numeric(0), lasso.penalize = NULL, gamma = 1,
-  nlambda = 100L, nfolds = 10L, foldid = NULL, boot = FALSE, B = 100L,
-  boot.type = c("replacement", "mofn"), m.frac = 0.9, parallel = FALSE,
-  adaptive = FALSE, abs.tol = 1e-05, rel.tol = 1e-05, maxit = 250,
-  maxit.cv = 250, rho = NULL, ...)
+  nlambda = 100L, nfolds = 10L, foldid = NULL, boot = FALSE,
+  B = 100L, boot.type = c("replacement", "mofn"), m.frac = 0.9,
+  parallel = FALSE, adaptive = FALSE, abs.tol = 1e-05,
+  rel.tol = 1e-05, maxit = 250, maxit.cv = 250, rho = NULL, ...)
 }
 \arguments{
 \item{x}{list of design matrices; one for each point in time. If a matrix is given, the design matrix is assumed to
