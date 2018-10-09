@@ -1,6 +1,6 @@
 Package: personalizedLong
 Type: Package
-Title: Fused comparative intervention/treatment scoring
+Title: Fused comparative intervention scoring/subgroup identification for long-term interventions
 Version: 0.0.1
 Authors@R: c(
     person("Jared", "Huling", , "jaredhuling@gmail.com", c("aut", "cre")),
