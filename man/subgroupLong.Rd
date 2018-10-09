@@ -128,7 +128,7 @@ round(matrix(fit$cv.model$best.cv.fit$beta, ncol = periods), 4)
 
 bfit <- subgroupLong(x = x.list, y = y.list, idx.list = idx.list,
                      trt = trt, gamma = c(0.05, 0.1, 1),
-                     boot = TRUE, B = 50L)
+                     boot = TRUE, B = 5L)
 
 plot(bfit)
 
