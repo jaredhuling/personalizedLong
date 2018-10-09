@@ -1,9 +1,12 @@
 
+[![Build
+Status](https://travis-ci.org/jaredhuling/personalizedLong.svg?branch=master)](https://travis-ci.org/jaredhuling/personalizedLong)
+
 The ‘personalizedLong’ package implements the methodology of
 
 Huling, J.D., Yu, M., and Smith, M.A. Fused comparative intervention
 scoring for heterogeneity of longitudinal intervention effects. To
-appear in the Annals of Applied Statistics, 2018+.
+appear in the *Annals of Applied Statistics*, 2018+.
 
 # Installing the ‘personalizedLong’ package
 
