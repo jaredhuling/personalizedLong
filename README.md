@@ -1,6 +1,11 @@
 
-Installing the 'personalizedLong' package
-=========================================
+The ‘personalizedLong’ package implements the methodology of
+
+Huling, J.D., Yu, M., and Smith, M.A. Fused comparative intervention
+scoring for heterogeneity of longitudinal intervention effects. To
+appear in the Annals of Applied Statistics, 2018+.
+
+# Installing the ‘personalizedLong’ package
 
 Install the development version using the **devtools** package:
 
@@ -8,8 +13,7 @@ Install the development version using the **devtools** package:
 devtools::install_github("jaredhuling/personalizedLong")
 ```
 
-Quick Usage Overview
-====================
+# Quick Usage Overview
 
 Load the package:
 
