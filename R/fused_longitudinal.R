@@ -55,17 +55,16 @@
 #' @export
 #' @examples
 #' set.seed(123)
-#' nobs       <- 100
-#' nobs.test  <- 1e5
-#' nvars      <- 20
-#' periods    <- 6
+#' nobs       <- 500
+#' nvars      <- 10
+#' periods    <- 5
 #' sd         <- 2
 #'
-#' beta.nz <- rbind(c( 1,    1,    1,    1.5,  1.5,  1.5),
-#'                  c(-1,   -1,   -1,   -0.5, -0.5, -0.5),
-#'                  c( 1,    1,    1,   -1,   -1,   -1),
-#'                  c( 1,    1,    1,    1,    1,    1),
-#'                  c(-0.5, -0.5, -0.5, -0.5, -0.5, -0.5))
+#' beta.nz <- rbind(c( 1,    1,    1,    1.5,  1.5),
+#'                  c(-1,   -1,   -1,   -0.5, -0.5),
+#'                  c( 1,    1,    1,   -1,   -1),
+#'                  c( 1,    1,    1,    1,    1),
+#'                  c(-0.5, -0.5, -0.5, -0.5, -0.5))
 #'
 #' beta <- data.matrix(rbind(beta.nz, matrix(0, nvars - 5, periods)))
 #'
@@ -75,93 +74,26 @@
 #'     matrix(rnorm(nobs * periods, sd = sd), ncol = periods)
 #' y   <- apply(y, 2, function(yy) yy - (2 * trt - 1))
 #'
-#' plot(x = NULL, xlim = c(1,6), ylim = range(y))
+#' plot(x = NULL, xlim = c(1,periods), ylim = range(y))
 #' for (i in 1:nobs)
 #' {
-#'     lines(x = 1:6, y = y[i,], col = colors()[i+1])
+#'     lines(x = 1:periods, y = y[i,], col = colors()[i+1])
 #' }
 #'
 #' x.list <- rep(list(x), periods)
 #' y.list <- lapply(apply(y, 2, function(x) list(x) ), function(x) x[[1]])
+#' idx.list <- rep(list(1:nrow(x)), periods)
 #'
-#' fit <- subgroupLong(x = x.list, y = y.list, trt = trt, gamma = c(0.05, 0.1, 1, 2, 5, 10))
+#' fit <- subgroupLong(x = x.list, y = y.list, idx.list = idx.list,
+#'                     trt = trt, gamma = c(0.05, 0.1, 1, 5, 10))
 #'
-#' round(matrix(fit$cv.model$best.cv.fit$beta, ncol = 6), 4)
+#' round(matrix(fit$cv.model$best.cv.fit$beta, ncol = periods), 4)
 #'
-#' bfit <- subgroupLong(x = x.list, y = y.list,
-#'                           trt = trt, gamma = c(0.05, 0.1, 1),
-#'                           boot = TRUE, B = 50L)
+#' bfit <- subgroupLong(x = x.list, y = y.list, idx.list = idx.list,
+#'                      trt = trt, gamma = c(0.05, 0.1, 1),
+#'                      boot = TRUE, B = 5L)
 #'
 #' plot(bfit)
-#'
-#' lapply(bfit$boot.res, function(x) round(colMeans(x, na.rm = TRUE), 4) )
-#' ## bootstrap CI
-#' CIs <- lapply(bfit$boot.res, function(x) apply(x, 2, function(xx)
-#'      quantile(xx, probs = c(0.025, 0.975), na.rm = TRUE)) )
-#'
-#' D <- lapply(1:periods, function(i) 1 * (drop(x.list[[i]] %*%  beta[,i]) > 0) )
-#' res.vec <- numeric(11L)
-#' names(res.vec) <- colnames(bfit$boot.res[[1]])
-#' oracle.results <- rep(list(res.vec), periods)
-#' for (t in 1:periods)
-#' {
-#'      y.cur <- y.list[[t]]
-#'      D.cur <- D[[t]]
-#'      weights.cur <- rep(1, length(y.cur))
-#'      # Emprical average among all
-#'      oracle.results[[t]][1] <- sum(y.cur * weights.cur) / sum(weights.cur)
-#'
-#'      # Fit statistics among Trt=D
-#'      sub.agree                <- trt == D.cur
-#'      oracle.results[[t]][2] <- sum(y.cur[sub.agree] * weights.cur[sub.agree]) /
-#'          sum(weights.cur[sub.agree])
-#'
-#'      # Fit statistics among Trt!=D
-#'      sub.disagree             <- trt != D.cur
-#'      oracle.results[[t]][3] <- sum(y.cur[sub.disagree] * weights.cur[sub.disagree]) /
-#'          sum(weights.cur[sub.disagree])
-#'
-#'      # Fit statistics among Trt=D=1
-#'      sub.11                   <- (trt == 1) & (D.cur == 1)
-#'      oracle.results[[t]][4] <- sum(y.cur[sub.11] * weights.cur[sub.11]) /
-#'          sum(weights.cur[sub.11])
-#'
-#'      # Fit statistics among Trt=D=0
-#'      sub.00                   <- (trt == 0) & (D.cur == 0)
-#'      oracle.results[[t]][5] <- sum(y.cur[sub.00] * weights.cur[sub.00]) /
-#'          sum(weights.cur[sub.00])
-#'
-#'      # Fit statistics among Trt=0, D=1
-#'      sub.01                   <- (trt == 0) & (D.cur == 1)
-#'      oracle.results[[t]][6] <- sum(y.cur[sub.01] * weights.cur[sub.01]) /
-#'          sum(weights.cur[sub.01])
-#'
-#'      # Fit statistics among Trt=1, D=0
-#'      sub.10                   <- (trt == 1) & (D.cur == 0)
-#'      oracle.results[[t]][7] <- sum(y.cur[sub.10] * weights.cur[sub.10]) /
-#'          sum(weights.cur[sub.10])
-#'
-#'      # Fit statistics among D=1
-#'      sub.x1                   <- (D.cur == 1)
-#'      oracle.results[[t]][8] <- sum(y.cur[sub.x1] * weights.cur[sub.x1]) /
-#'          sum(weights.cur[sub.x1])
-#'
-#'      # Fit statistics among D=0
-#'      sub.x0                   <- (D.cur == 0)
-#'      oracle.results[[t]][9] <- sum(y.cur[sub.x0] * weights.cur[sub.x0]) /
-#'          sum(weights.cur[sub.x0])
-#'
-#'      # Fit statistics among Trt=1
-#'      sub.1x                   <- (trt == 1)
-#'      oracle.results[[t]][10] <- sum(y.cur[sub.1x] * weights.cur[sub.1x]) /
-#'          sum(weights.cur[sub.1x])
-#'
-#'      # Fit statistics among Trt=0
-#'      sub.0x                   <- (trt == 0)
-#'      oracle.results[[t]][11] <- sum(y.cur[sub.0x] * weights.cur[sub.0x]) /
-#'          sum(weights.cur[sub.0x])
-#' }
-#'
 #'
 subgroupLong <- function(x,
                          y,
@@ -1619,17 +1551,16 @@ cv.genlasso <- function(x,
 #' @export
 #' @examples
 #' set.seed(123)
-#' nobs       <- 100
-#' nobs.test  <- 1e5
-#' nvars      <- 20
-#' periods    <- 6
+#' nobs       <- 500
+#' nvars      <- 10
+#' periods    <- 5
 #' sd         <- 2
 #'
-#' beta.nz <- rbind(c( 1,    1,    1,    1.5,  1.5,  1.5),
-#'                  c(-1,   -1,   -1,   -0.5, -0.5, -0.5),
-#'                  c( 1,    1,    1,   -1,   -1,   -1),
-#'                  c( 1,    1,    1,    1,    1,    1),
-#'                  c(-0.5, -0.5, -0.5, -0.5, -0.5, -0.5))
+#' beta.nz <- rbind(c( 1,    1,    1,    1.5,  1.5),
+#'                  c(-1,   -1,   -1,   -0.5, -0.5),
+#'                  c( 1,    1,    1,   -1,   -1),
+#'                  c( 1,    1,    1,    1,    1),
+#'                  c(-0.5, -0.5, -0.5, -0.5, -0.5))
 #'
 #' beta <- data.matrix(rbind(beta.nz, matrix(0, nvars - 5, periods)))
 #'
@@ -1639,16 +1570,19 @@ cv.genlasso <- function(x,
 #'     matrix(rnorm(nobs * periods, sd = sd), ncol = periods)
 #' y   <- apply(y, 2, function(yy) yy - (2 * trt - 1))
 #'
-#' plot(x = NULL, xlim = c(1,6), ylim = range(y))
+#' plot(x = NULL, xlim = c(1,periods), ylim = range(y))
 #' for (i in 1:nobs)
 #' {
-#'     lines(x = 1:6, y = y[i,], col = colors()[i+1])
+#'     lines(x = 1:periods, y = y[i,], col = colors()[i+1])
 #' }
 #'
 #' x.list <- rep(list(x), periods)
 #' y.list <- lapply(apply(y, 2, function(x) list(x) ), function(x) x[[1]])
+#' idx.list <- rep(list(1:nrow(x)), periods)
 #'
-#' fit <- subgroupLong(x = x.list, y = y.list, trt = trt, gamma = c(0.05, 0.1, 1, 2, 5, 10))
+#' fit <- subgroupLong(x = x.list, y = y.list, trt = trt,
+#'                     idx.list = idx.list,
+#'                     gamma = c(0.05, 0.1, 1, 10))
 #'
 #' preds <- predict(fit, newx = x)
 #'
@@ -1710,55 +1644,55 @@ predict.subgroupLong <- function(object, newx, s = NULL,
 # }
 
 
-
-#' Summary method for subgroupLong fitted objects
 #'
-#' @param object fitted "subgroupLong" model object
-#' @param ... not used
-#' @return An object depending on the type argument
-#' @rdname summary
-#' @method summary subgroupLong
-#' @export
-#' @examples
-#' set.seed(123)
-#' nobs       <- 100
-#' nobs.test  <- 1e5
-#' nvars      <- 20
-#' periods    <- 6
-#' sd         <- 2
-#'
-#' beta.nz <- rbind(c( 1,    1,    1,    1.5,  1.5,  1.5),
-#'                  c(-1,   -1,   -1,   -0.5, -0.5, -0.5),
-#'                  c( 1,    1,    1,   -1,   -1,   -1),
-#'                  c( 1,    1,    1,    1,    1,    1),
-#'                  c(-0.5, -0.5, -0.5, -0.5, -0.5, -0.5))
-#'
-#' beta <- data.matrix(rbind(beta.nz, matrix(0, nvars - 5, periods)))
-#'
-#' trt <- rbinom(nobs, 1, 0.5)
-#' x   <- matrix(rnorm(nobs * nvars), ncol = nvars); colnames(x) <- paste0("V", 1:ncol(x))
-#' y   <- x %*% (beta * 0.5) + (2 * trt - 1) * (x %*% beta) +
-#'     matrix(rnorm(nobs * periods, sd = sd), ncol = periods)
-#' y   <- apply(y, 2, function(yy) yy - (2 * trt - 1))
-#'
-#' plot(x = NULL, xlim = c(1,6), ylim = range(y))
-#' for (i in 1:nobs)
+#' #' Summary method for subgroupLong fitted objects
+#' #'
+#' #' @param object fitted "subgroupLong" model object
+#' #' @param ... not used
+#' #' @return An object depending on the type argument
+#' #' @rdname summary
+#' #' @method summary subgroupLong
+#' #' @export
+#' #' @examples
+#' #' set.seed(123)
+#' #' nobs       <- 100
+#' #' nobs.test  <- 1e5
+#' #' nvars      <- 20
+#' #' periods    <- 6
+#' #' sd         <- 2
+#' #'
+#' #' beta.nz <- rbind(c( 1,    1,    1,    1.5,  1.5,  1.5),
+#' #'                  c(-1,   -1,   -1,   -0.5, -0.5, -0.5),
+#' #'                  c( 1,    1,    1,   -1,   -1,   -1),
+#' #'                  c( 1,    1,    1,    1,    1,    1),
+#' #'                  c(-0.5, -0.5, -0.5, -0.5, -0.5, -0.5))
+#' #'
+#' #' beta <- data.matrix(rbind(beta.nz, matrix(0, nvars - 5, periods)))
+#' #'
+#' #' trt <- rbinom(nobs, 1, 0.5)
+#' #' x   <- matrix(rnorm(nobs * nvars), ncol = nvars); colnames(x) <- paste0("V", 1:ncol(x))
+#' #' y   <- x %*% (beta * 0.5) + (2 * trt - 1) * (x %*% beta) +
+#' #'     matrix(rnorm(nobs * periods, sd = sd), ncol = periods)
+#' #' y   <- apply(y, 2, function(yy) yy - (2 * trt - 1))
+#' #'
+#' #' plot(x = NULL, xlim = c(1,6), ylim = range(y))
+#' #' for (i in 1:nobs)
+#' #' {
+#' #'     lines(x = 1:6, y = y[i,], col = colors()[i+1])
+#' #' }
+#' #'
+#' #' x.list <- rep(list(x), periods)
+#' #' y.list <- lapply(apply(y, 2, function(x) list(x) ), function(x) x[[1]])
+#' #'
+#' #' fit <- subgroupLong(x = x.list, y = y.list, trt = trt, gamma = c(0.05, 0.1, 1, 2, 5, 10))
+#' #'
+#' #' summary(fit)
+#' #'
+#' #'
+#' summary.subgroupLong <- function(object, ...)
 #' {
-#'     lines(x = 1:6, y = y[i,], col = colors()[i+1])
+#'
 #' }
 #'
-#' x.list <- rep(list(x), periods)
-#' y.list <- lapply(apply(y, 2, function(x) list(x) ), function(x) x[[1]])
-#'
-#' fit <- subgroupLong(x = x.list, y = y.list, trt = trt, gamma = c(0.05, 0.1, 1, 2, 5, 10))
-#'
-#' summary(fit)
 #'
 #'
-summary.subgroupLong <- function(object, ...)
-{
-
-}
-
-
-

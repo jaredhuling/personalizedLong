@@ -30,17 +30,16 @@ Prediction method for subgroupLong fitted objects
 }
 \examples{
 set.seed(123)
-nobs       <- 100
-nobs.test  <- 1e5
-nvars      <- 20
-periods    <- 6
+nobs       <- 500
+nvars      <- 10
+periods    <- 5
 sd         <- 2
 
-beta.nz <- rbind(c( 1,    1,    1,    1.5,  1.5,  1.5),
-                 c(-1,   -1,   -1,   -0.5, -0.5, -0.5),
-                 c( 1,    1,    1,   -1,   -1,   -1),
-                 c( 1,    1,    1,    1,    1,    1),
-                 c(-0.5, -0.5, -0.5, -0.5, -0.5, -0.5))
+beta.nz <- rbind(c( 1,    1,    1,    1.5,  1.5),
+                 c(-1,   -1,   -1,   -0.5, -0.5),
+                 c( 1,    1,    1,   -1,   -1),
+                 c( 1,    1,    1,    1,    1),
+                 c(-0.5, -0.5, -0.5, -0.5, -0.5))
 
 beta <- data.matrix(rbind(beta.nz, matrix(0, nvars - 5, periods)))
 
@@ -50,16 +49,19 @@ y   <- x \%*\% (beta * 0.5) + (2 * trt - 1) * (x \%*\% beta) +
     matrix(rnorm(nobs * periods, sd = sd), ncol = periods)
 y   <- apply(y, 2, function(yy) yy - (2 * trt - 1))
 
-plot(x = NULL, xlim = c(1,6), ylim = range(y))
+plot(x = NULL, xlim = c(1,periods), ylim = range(y))
 for (i in 1:nobs)
 {
-    lines(x = 1:6, y = y[i,], col = colors()[i+1])
+    lines(x = 1:periods, y = y[i,], col = colors()[i+1])
 }
 
 x.list <- rep(list(x), periods)
 y.list <- lapply(apply(y, 2, function(x) list(x) ), function(x) x[[1]])
+idx.list <- rep(list(1:nrow(x)), periods)
 
-fit <- subgroupLong(x = x.list, y = y.list, trt = trt, gamma = c(0.05, 0.1, 1, 2, 5, 10))
+fit <- subgroupLong(x = x.list, y = y.list, trt = trt,
+                    idx.list = idx.list,
+                    gamma = c(0.05, 0.1, 1, 10))
 
 preds <- predict(fit, newx = x)
 
